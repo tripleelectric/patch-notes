@@ -1,0 +1,25 @@
+{
+  "name": "@patch-notes/cli",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "patchnotes": "dist/patchnotes.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "build": "node build.mjs"
+  },
+  "devDependencies": {
+    "@patch-notes/schema": "workspace:*",
+    "@types/node": "26.6.6",
+    "esbuild": "0.28.2",
+    "yaml": "^2.9.1"
+  }
+}
