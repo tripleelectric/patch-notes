@@ -37,24 +37,44 @@ Short, non-technical summary.
 - CSV only, no XLSX
 ```
 
-## Configuration
+## Architecture
 
-`patchnotes.config.ts` in the consuming project. Everything workflow- or tool-specific is an adapter.
+One deployment = one project (single-tenant).
 
-```ts
-export default defineConfig({
-  dir: '.patchnotes',
-  versioning: 'semver',
-  sources: [openspec({ dir: 'openspec/changes/archive' })], // or git(), manual()
-  tracker: asana({ projectId: '...' }),                      // or github(), linear(), none()
-  preview: { url: 'https://{branch}.preview.example.com' },
-  media: { storage: 'repo' },                                // or s3({...})
-})
+```
+project repo                              patch-notes server (Docker, 1 volume)
+.patchnotes/*.md  --patchnotes publish-->  API  >  SQLite + media
+patchnotes.yaml       (bearer token)       UI   <  reviewers (login)
 ```
 
-## Planned pieces
+- The project repo is the source of truth for entries. The server is a published mirror.
+- `publish` sends a full snapshot and is idempotent (upsert by entry id).
+- The server owns users and, later, review status and feedback.
 
-1. CLI: `patchnotes new`, `patchnotes release <major|minor|patch>`, `patchnotes build` (entries > JSON + CHANGELOG.md)
-2. Media capture via Playwright (before/after screenshots, short videos)
-3. Viewer: release timeline, entry detail, "needs my review" filter
-4. Review actions synced back to the tracker
+## Configuration
+
+`patchnotes.yaml` in the consuming project:
+
+```yaml
+server: https://patchnotes.example.com
+dir: .patchnotes
+previewUrl: https://{branch}.preview.example.com   # optional
+```
+
+The publish token comes from env `PATCHNOTES_TOKEN`, never from the file.
+
+## Stack
+
+- `packages/schema`: zod schemas for entry, config and publish payload (shared)
+- `packages/cli`: `new`, `check`, `release`, `publish`
+- `apps/server`: Fastify, Prisma (SQLite), Better Auth (invite-only, roles `admin` and `reviewer`), server-rendered TSX via `@kitajs/html`, htmx, Tailwind
+
+## Roadmap
+
+1. `entry-schema-and-config`
+2. `cli-new-check-release`
+3. `server-foundation`
+4. `auth`
+5. `publish-api` and `cli-publish`
+6. `viewer-ui`
+7. `agent-snippet`
