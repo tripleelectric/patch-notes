@@ -89,6 +89,28 @@ patchnotes release minor         # or patch, major, or an explicit 1.4.0
 - `release` runs the check, then moves all `unreleased/` entries into `vX.Y.Z/`. It does not touch git.
 - Exit codes: `0` success, `1` validation or operation failed, `2` invalid usage.
 
+## Server
+
+One container per project. Build and run:
+
+```sh
+docker build -t patch-notes .
+docker run -p 3000:3000 -v patchnotes-data:/data \
+  -e BASE_URL=https://patchnotes.example.com \
+  -e ADMIN_EMAIL=lead@example.com -e ADMIN_PASSWORD='change-me-please' \
+  patch-notes
+```
+
+| Variable | Required | Purpose |
+| --- | --- | --- |
+| `BASE_URL` | yes | public URL of the server, used for links and the request origin check |
+| `DATA_DIR` | no | data directory, default `/data` in the image (`./data` otherwise): SQLite database, media, generated auth secret |
+| `PORT`, `HOST` | no | listen address, default `0.0.0.0:3000` |
+| `AUTH_SECRET` | no | session signing secret (32+ characters); generated once into `DATA_DIR` when missing |
+| `ADMIN_EMAIL`, `ADMIN_PASSWORD` | no | creates the first admin when the database has no users; ignored afterwards |
+
+Users: the first admin comes from `ADMIN_*`. Everyone else gets an invite link from an admin (`Users` page); links work once and expire after 7 days. Roles: `admin` manages users, `reviewer` reviews. There is no password reset by email: an admin removes the user and sends a new invite.
+
 ## Stack
 
 - `packages/schema`: zod schemas for entry, config and publish payload (shared)

@@ -18,3 +18,8 @@ it('applies defaults', () => {
     value: { dataDir: resolve('./data'), port: 3000, host: '0.0.0.0', baseUrl: 'https://notes.example.com' },
   })
 })
+
+it('rejects a short AUTH_SECRET', () => {
+  const result = loadConfig({ BASE_URL: 'https://x.example.com', AUTH_SECRET: 'short' })
+  expect(!result.ok && result.errors[0]).toMatch(/^AUTH_SECRET: /)
+})
