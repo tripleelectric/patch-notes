@@ -61,7 +61,7 @@ describe('patchnotes check', () => {
   })
 
   it('rejects a directory as media', async () => {
-    const root = await tmpProject({ '.patchnotes/unreleased/a.md': entry('a', media('media')), '.patchnotes/media/x.png': 'x' })
+    const root = await tmpProject({ '.patchnotes/unreleased/a.md': entry('a', media('media/shot.png')), '.patchnotes/media/shot.png/x': 'x' })
     const result = await cli(root, 'check')
     expect(result.code).toBe(1)
     expect(result.stderr).toContain('media path is not a file')
@@ -96,6 +96,16 @@ describe('patchnotes check', () => {
   it('uses the configured dir in paths', async () => {
     const root = await tmpProject({ 'patchnotes.yaml': 'dir: ./docs/notes\n', 'docs/notes/unreleased/a.md': entry('b') })
     expect((await cli(root, 'check')).stderr).toMatch(/^docs\/notes\/unreleased\/a\.md: id: /)
+  })
+
+  it.each([
+    ['media/logo.svg', 'unsupported media type'],
+    ['media/flow.webm', 'must be an image'],
+  ])('rejects image %s', async (path, message) => {
+    const root = await tmpProject({ '.patchnotes/unreleased/a.md': entry('a', media(path)), [`.patchnotes/${path}`]: 'x' })
+    const result = await cli(root, 'check')
+    expect(result.code).toBe(1)
+    expect(result.stderr).toMatch(new RegExp(`^\\.patchnotes/unreleased/a\\.md: media\\.0\\.image: .*${message}`))
   })
 
   it('changes no file', async () => {

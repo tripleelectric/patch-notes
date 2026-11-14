@@ -23,3 +23,8 @@ it('rejects a short AUTH_SECRET', () => {
   const result = loadConfig({ BASE_URL: 'https://x.example.com', AUTH_SECRET: 'short' })
   expect(!result.ok && result.errors[0]).toMatch(/^AUTH_SECRET: /)
 })
+
+it('rejects a short PUBLISH_TOKEN', () => {
+  const result = loadConfig({ BASE_URL: 'https://x.example.com', PUBLISH_TOKEN: 'short' })
+  expect(!result.ok && result.errors[0]).toMatch(/^PUBLISH_TOKEN: /)
+})

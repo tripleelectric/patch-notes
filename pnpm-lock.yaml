@@ -197,6 +197,12 @@ importers:
       '@kitajs/ts-html-plugin':
         specifier: 4.1.4
         version: 4.1.4(@kitajs/html@4.2.13)(typescript@5.9.3)
+      '@patch-notes/cli':
+        specifier: workspace:*
+        version: link:../../packages/cli
+      '@patch-notes/schema':
+        specifier: workspace:*
+        version: link:../../packages/schema
       '@prisma/adapter-better-sqlite3':
         specifier: 7.9.0
         version: 7.9.0

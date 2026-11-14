@@ -25,6 +25,7 @@ model User {
   sessions      Session[]
   accounts      Account[]
   invites       Invite[]
+  reviewEvents  ReviewEvent[]
 
   @@map("user")
 }
@@ -89,4 +90,53 @@ model Invite {
   createdAt   DateTime  @default(now())
 
   @@index([email])
+}
+
+/// One published patch note entry; `id` is the entry id from the repo.
+model Entry {
+  id               String        @id
+  path             String
+  version          String?
+  title            String
+  type             String
+  date             String
+  requests         Json
+  try              String?
+  /// Media items with hashes: [{ image|video|before|after: { sha256, contentType }, caption? }]
+  media            Json
+  body             String
+  contentHash      String
+  status           String        @default("awaiting-review")
+  firstPublishedAt DateTime      @default(now())
+  publishedAt      DateTime
+  removedAt        DateTime?
+  events           ReviewEvent[]
+
+  @@index([version])
+}
+
+/// Review history: updated, comment, accepted, changes-requested.
+model ReviewEvent {
+  id        String   @id @default(cuid())
+  entryId   String
+  entry     Entry    @relation(fields: [entryId], references: [id], onDelete: Cascade)
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  kind      String
+  body      String?
+  createdAt DateTime @default(now())
+
+  @@index([entryId, createdAt])
+}
+
+model Media {
+  sha256      String   @id
+  contentType String
+  size        Int
+  createdAt   DateTime @default(now())
+}
+
+model Setting {
+  key   String @id
+  value String
 }

@@ -1,6 +1,6 @@
 import { readdir, readFile, realpath, stat } from 'node:fs/promises'
 import { join, posix, relative, sep } from 'node:path'
-import { parseEntry, validateEntrySet, type Entry, type ValidationError } from '@patch-notes/schema'
+import { mediaPaths, mediaTypeProblem, parseEntry, validateEntrySet, type Entry, type ValidationError } from '@patch-notes/schema'
 import type { Project } from './project.js'
 
 export interface CheckResult {
@@ -61,9 +61,8 @@ export async function check(project: Project): Promise<CheckResult> {
   const realDir = await realpath(dir)
   for (const entry of entries) {
     for (const [index, item] of (entry.data.media ?? []).entries()) {
-      for (const [key, path] of Object.entries(item)) {
-        if (key === 'caption') continue
-        const message = await mediaProblem(dir, realDir, path)
+      for (const [key, path] of mediaPaths(item)) {
+        const message = mediaTypeProblem(key, path) ?? (await mediaProblem(dir, realDir, path))
         if (message) errors.push({ file: entry.path, field: `media.${index}.${key}`, message })
       }
     }

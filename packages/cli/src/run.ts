@@ -1,6 +1,7 @@
 import pkg from '../package.json' with { type: 'json' }
 import { checkCommand } from './commands/check.js'
 import { newCommand } from './commands/new.js'
+import { publishCommand } from './commands/publish.js'
 import { releaseCommand } from './commands/release.js'
 import { UsageError, type Io } from './io.js'
 
@@ -13,6 +14,8 @@ Commands:
       Validate all entries, ids and media files.
   release <patch|minor|major|X.Y.Z>
       Move all unreleased entries into a version directory.
+  publish
+      Upload entries and media to the server in patchnotes.yaml (token from PATCHNOTES_TOKEN).
 
 Options:
   -h, --help     Show this help.
@@ -20,7 +23,7 @@ Options:
 
 Exit codes: 0 success, 1 validation or operation failed, 2 invalid usage.`
 
-const commands = { new: newCommand, check: checkCommand, release: releaseCommand }
+const commands = { new: newCommand, check: checkCommand, release: releaseCommand, publish: publishCommand }
 
 export async function run(argv: string[], io: Io): Promise<number> {
   const [name, ...rest] = argv

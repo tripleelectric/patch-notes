@@ -5,6 +5,7 @@ export interface Io {
   stdout: (line: string) => void
   stderr: (line: string) => void
   now: () => Date
+  env: Record<string, string | undefined>
 }
 
 export class UsageError extends Error {}

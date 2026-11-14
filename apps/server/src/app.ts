@@ -12,6 +12,7 @@ import { isHtmx, toHeaders } from './http.js'
 import { adminRoutes } from './routes/admin.js'
 import { authRoutes } from './routes/auth.js'
 import { inviteRoutes } from './routes/invite.js'
+import { publishRoutes } from './routes/publish.js'
 import { HomePage } from './views/home.js'
 import { MessagePage } from './views/auth.js'
 
@@ -128,6 +129,7 @@ export async function buildApp(config: Config, options: AppOptions = {}) {
     }
   })
 
+  await app.register(publishRoutes)
   authRoutes(app)
   inviteRoutes(app)
   adminRoutes(app)

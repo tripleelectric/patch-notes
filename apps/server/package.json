@@ -25,6 +25,8 @@
     "@fastify/static": "10.1.10",
     "@kitajs/html": "4.2.13",
     "@kitajs/ts-html-plugin": "4.1.4",
+    "@patch-notes/cli": "workspace:*",
+    "@patch-notes/schema": "workspace:*",
     "@prisma/adapter-better-sqlite3": "7.9.0",
     "@prisma/client": "7.9.0",
     "@tailwindcss/cli": "4.3.5",

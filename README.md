@@ -82,11 +82,14 @@ patchnotes new "Invoice export as CSV" --type feature \
   --request https://app.asana.com/0/1/2 --try '/invoices?export=1'
 patchnotes check                 # validate entries, ids, media files; use in CI
 patchnotes release minor         # or patch, major, or an explicit 1.4.0
+PATCHNOTES_TOKEN=... patchnotes publish   # mirror entries and media to the server
 ```
 
 - `new` writes `.patchnotes/unreleased/<id>.md` (id from the title, or `--id`) and prints its path. A path `--try` needs `appUrl` in `patchnotes.yaml`.
 - `check` reports every problem at once as `path: field: message`.
 - `release` runs the check, then moves all `unreleased/` entries into `vX.Y.Z/`. It does not touch git.
+- `publish` runs the check, uploads media the server does not have yet and publishes all entries as one snapshot to `server` from `patchnotes.yaml`. Entries deleted from the repo disappear from the viewer; review status is kept unless an entry's content changed.
+- Media: `.png`, `.jpg`, `.jpeg`, `.webp`, `.gif` images and `.mp4`, `.webm` videos, up to 200 MB each.
 - Exit codes: `0` success, `1` validation or operation failed, `2` invalid usage.
 
 ## Server
@@ -108,6 +111,7 @@ docker run -p 3000:3000 -v patchnotes-data:/data \
 | `PORT`, `HOST` | no | listen address, default `0.0.0.0:3000` |
 | `AUTH_SECRET` | no | session signing secret (32+ characters); generated once into `DATA_DIR` when missing |
 | `ADMIN_EMAIL`, `ADMIN_PASSWORD` | no | creates the first admin when the database has no users; ignored afterwards |
+| `PUBLISH_TOKEN` | no | bearer token (32+ characters) the CLI sends as `PATCHNOTES_TOKEN`; publishing is disabled without it |
 
 Users: the first admin comes from `ADMIN_*`. Everyone else gets an invite link from an admin (`Users` page); links work once and expire after 7 days. Roles: `admin` manages users, `reviewer` reviews. There is no password reset by email: an admin removes the user and sends a new invite.
 

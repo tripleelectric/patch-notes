@@ -7,7 +7,7 @@ Defines how the patch-notes server is configured, where it keeps its data, how i
 ## Requirements
 
 ### Requirement: Configuration from environment
-The server SHALL read its configuration only from environment variables: `DATA_DIR` (default `./data`), `PORT` (default `3000`), `HOST` (default `0.0.0.0`), `BASE_URL` (required, absolute `http`/`https` URL under which the server is reachable), and the optional `AUTH_SECRET` (at least 32 characters), `ADMIN_EMAIL` and `ADMIN_PASSWORD` (at least 10 characters). Invalid or missing required values SHALL stop startup with an error naming each variable.
+The server SHALL read its configuration only from environment variables: `DATA_DIR` (default `./data`), `PORT` (default `3000`), `HOST` (default `0.0.0.0`), `BASE_URL` (required, absolute `http`/`https` URL under which the server is reachable), and the optional `AUTH_SECRET` (at least 32 characters), `ADMIN_EMAIL`, `ADMIN_PASSWORD` (at least 10 characters) and `PUBLISH_TOKEN` (at least 32 characters). Invalid or missing required values SHALL stop startup with an error naming each variable.
 
 #### Scenario: Missing BASE_URL
 - **WHEN** the server starts without `BASE_URL`
@@ -20,6 +20,10 @@ The server SHALL read its configuration only from environment variables: `DATA_D
 #### Scenario: Short auth secret
 - **WHEN** `AUTH_SECRET` has fewer than 32 characters
 - **THEN** startup fails and the error names `AUTH_SECRET`
+
+#### Scenario: Short publish token
+- **WHEN** `PUBLISH_TOKEN` has fewer than 32 characters
+- **THEN** startup fails and the error names `PUBLISH_TOKEN`
 
 ### Requirement: Data directory
 All persistent state SHALL live in `DATA_DIR`. The server SHALL create the directory if missing and keep the SQLite database at `DATA_DIR/patchnotes.db`.

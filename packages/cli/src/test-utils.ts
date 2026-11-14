@@ -19,6 +19,10 @@ export async function writeFiles(root: string, files: Record<string, string>): P
 }
 
 export async function cli(cwd: string, ...argv: string[]) {
+  return cliWithEnv({}, cwd, ...argv)
+}
+
+export async function cliWithEnv(env: Record<string, string>, cwd: string, ...argv: string[]) {
   const stdout: string[] = []
   const stderr: string[] = []
   const code = await run(argv, {
@@ -26,6 +30,7 @@ export async function cli(cwd: string, ...argv: string[]) {
     stdout: (line) => stdout.push(line),
     stderr: (line) => stderr.push(line),
     now: () => new Date(2026, 10, 14, 12),
+    env,
   })
   return { code, stdout: stdout.join('\n'), stderr: stderr.join('\n') }
 }
