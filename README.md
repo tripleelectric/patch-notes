@@ -9,7 +9,7 @@ Work ships ticket by ticket, but gets planned and reviewed as patches. Ticket tr
 ## Idea
 
 - **Entry**: one shipped change. Markdown file with frontmatter: what changed, why (link to the original request), decisions, media (before/after, video), deep link to try it.
-- **Release**: a SemVer git tag grouping entries. Untagged entries live in "Unreleased".
+- **Release**: a SemVer version grouping entries, stored as a `vX.Y.Z/` directory. Entries not yet released live in `unreleased/`.
 - **Patch**: a planned release. A single ticket shipped alone is just a small release.
 - **Source of truth**: files in the project repo. The viewer and integrations only read them.
 
@@ -22,8 +22,9 @@ Work ships ticket by ticket, but gets planned and reviewed as patches. Ticket tr
 id: invoice-export
 title: Invoice export as CSV
 type: feature            # feature | fix | change
-request: https://app.asana.com/0/.../123
-status: awaiting-review  # awaiting-review | accepted | changes-requested
+date: 2026-11-14
+requests:
+  - https://app.asana.com/0/.../123
 media:
   - before: media/invoice-before.png
     after: media/invoice-after.png
@@ -36,6 +37,8 @@ Short, non-technical summary.
 ## Decisions
 - CSV only, no XLSX
 ```
+
+Review status is not part of the file; the server owns it. Full reference: [docs/entry-format.md](docs/entry-format.md).
 
 ## Architecture
 
@@ -56,12 +59,35 @@ patchnotes.yaml       (bearer token)       UI   <  reviewers (login)
 `patchnotes.yaml` in the consuming project:
 
 ```yaml
-server: https://patchnotes.example.com
-dir: .patchnotes
-previewUrl: https://{branch}.preview.example.com   # optional
+dir: .patchnotes                          # default
+server: https://patchnotes.example.com    # optional
+appUrl: https://app.example.com           # optional, base for path try links
 ```
 
 The publish token comes from env `PATCHNOTES_TOKEN`, never from the file.
+
+## CLI
+
+Build the CLI and install it into a consuming project (not on npm yet):
+
+```sh
+pnpm install && pnpm build                                # in this repo
+pnpm add -D file:../patch-notes/packages/cli              # in the consuming project
+```
+
+Commands, run anywhere inside the project:
+
+```sh
+patchnotes new "Invoice export as CSV" --type feature \
+  --request https://app.asana.com/0/1/2 --try '/invoices?export=1'
+patchnotes check                 # validate entries, ids, media files; use in CI
+patchnotes release minor         # or patch, major, or an explicit 1.4.0
+```
+
+- `new` writes `.patchnotes/unreleased/<id>.md` (id from the title, or `--id`) and prints its path. A path `--try` needs `appUrl` in `patchnotes.yaml`.
+- `check` reports every problem at once as `path: field: message`.
+- `release` runs the check, then moves all `unreleased/` entries into `vX.Y.Z/`. It does not touch git.
+- Exit codes: `0` success, `1` validation or operation failed, `2` invalid usage.
 
 ## Stack
 
