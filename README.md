@@ -83,12 +83,14 @@ patchnotes new "Invoice export as CSV" --type feature \
 patchnotes check                 # validate entries, ids, media files; use in CI
 patchnotes release minor         # or patch, major, or an explicit 1.4.0
 PATCHNOTES_TOKEN=... patchnotes publish   # mirror entries and media to the server
+patchnotes agent-snippet --write AGENTS.md   # teach coding agents to write entries (also CLAUDE.md)
 ```
 
 - `new` writes `.patchnotes/unreleased/<id>.md` (id from the title, or `--id`) and prints its path. A path `--try` needs `appUrl` in `patchnotes.yaml`.
 - `check` reports every problem at once as `path: field: message`.
 - `release` runs the check, then moves all `unreleased/` entries into `vX.Y.Z/`. It does not touch git.
 - `publish` runs the check, uploads media the server does not have yet and publishes all entries as one snapshot to `server` from `patchnotes.yaml`. Entries deleted from the repo disappear from the viewer; review status is kept unless an entry's content changed.
+- `agent-snippet` prints instructions for coding agents; `--write <file>` keeps them up to date between `<!-- patchnotes:start/end -->` markers without touching the rest of the file.
 - Media: `.png`, `.jpg`, `.jpeg`, `.webp`, `.gif` images and `.mp4`, `.webm` videos, up to 200 MB each.
 - Exit codes: `0` success, `1` validation or operation failed, `2` invalid usage.
 

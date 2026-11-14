@@ -51,7 +51,7 @@ The CLI SHALL exit with code 0 on success, 1 when validation or the requested op
 
 #### Scenario: Help
 - **WHEN** the user runs `patchnotes --help`
-- **THEN** stdout lists the commands `new`, `check` and `release` and the exit code is 0
+- **THEN** stdout lists the commands `new`, `check`, `release`, `publish` and `agent-snippet` and the exit code is 0
 
 #### Scenario: No arguments
 - **WHEN** the user runs `patchnotes`

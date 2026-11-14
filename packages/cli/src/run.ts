@@ -1,4 +1,5 @@
 import pkg from '../package.json' with { type: 'json' }
+import { agentSnippetCommand } from './commands/agent-snippet.js'
 import { checkCommand } from './commands/check.js'
 import { newCommand } from './commands/new.js'
 import { publishCommand } from './commands/publish.js'
@@ -16,6 +17,8 @@ Commands:
       Move all unreleased entries into a version directory.
   publish
       Upload entries and media to the server in patchnotes.yaml (token from PATCHNOTES_TOKEN).
+  agent-snippet [--write <file>]
+      Print instructions for coding agents, or write them into e.g. AGENTS.md or CLAUDE.md.
 
 Options:
   -h, --help     Show this help.
@@ -23,7 +26,7 @@ Options:
 
 Exit codes: 0 success, 1 validation or operation failed, 2 invalid usage.`
 
-const commands = { new: newCommand, check: checkCommand, release: releaseCommand, publish: publishCommand }
+const commands = { new: newCommand, check: checkCommand, release: releaseCommand, publish: publishCommand, 'agent-snippet': agentSnippetCommand }
 
 export async function run(argv: string[], io: Io): Promise<number> {
   const [name, ...rest] = argv

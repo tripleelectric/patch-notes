@@ -10,7 +10,7 @@ describe('help, version and exit codes', () => {
   it('prints help to stdout', async () => {
     const result = await cli(await tmpProject(), '--help')
     expect(result.code).toBe(0)
-    expect(result.stdout).toMatch(/new <title>[\s\S]*check[\s\S]*release/)
+    expect(result.stdout).toMatch(/new <title>[\s\S]*check[\s\S]*release[\s\S]*publish[\s\S]*agent-snippet/)
   })
 
   it('prints help for a command', async () => {
