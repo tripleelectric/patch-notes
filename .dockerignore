@@ -1,0 +1,11 @@
+**/node_modules
+**/dist
+**/data
+**/tmp
+apps/server/src/generated
+apps/server/public/assets
+.git
+.claude
+.kimi-code
+openspec
+**/.env*

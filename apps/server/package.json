@@ -1,0 +1,45 @@
+{
+  "name": "@patch-notes/server",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "generate": "prisma generate",
+    "typecheck": "tsc --noEmit && xss-scan",
+    "build:css": "tailwindcss -i src/styles.css -o public/assets/app.css --minify",
+    "build:assets": "pnpm build:css && node -e \"require('node:fs').cpSync(require.resolve('htmx.org/dist/htmx.min.js'), 'public/assets/htmx.min.js')\"",
+    "build": "pnpm generate && pnpm build:assets && node build.mjs",
+    "dev": "pnpm build:assets && tsx watch src/main.ts",
+    "start": "node dist/server.js",
+    "db:migration": "prisma migrate dev --create-only --name"
+  },
+  "dependencies": {
+    "better-sqlite3": "^12.11.1"
+  },
+  "devDependencies": {
+    "@fastify/static": "10.1.10",
+    "@kitajs/html": "4.2.13",
+    "@kitajs/ts-html-plugin": "4.1.4",
+    "@prisma/adapter-better-sqlite3": "7.9.0",
+    "@prisma/client": "7.9.0",
+    "@tailwindcss/cli": "4.3.5",
+    "@types/better-sqlite3": "9.6.0",
+    "@types/node": "26.6.6",
+    "esbuild": "0.28.2",
+    "fastify": "5.12.8",
+    "htmx.org": "2.0.11",
+    "prisma": "7.9.0",
+    "tailwindcss": "4.3.5",
+    "tsx": "4.23.15",
+    "typescript": "^5.9.3",
+    "zod": "^4.6.7"
+  },
+  "files": [
+    "dist",
+    "public",
+    "prisma/migrations"
+  ]
+}
