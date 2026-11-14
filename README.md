@@ -92,6 +92,10 @@ PATCHNOTES_TOKEN=... patchnotes publish   # mirror entries and media to the serv
 - Media: `.png`, `.jpg`, `.jpeg`, `.webp`, `.gif` images and `.mp4`, `.webm` videos, up to 200 MB each.
 - Exit codes: `0` success, `1` validation or operation failed, `2` invalid usage.
 
+## Demo
+
+`pnpm demo` builds the image, starts a fresh container on `http://localhost:3000` (`DEMO_PORT` to change), publishes `examples/demo-project` and seeds two reviewers with review history. Logins are printed at the end. Needs Docker.
+
 ## Server
 
 One container per project. Build and run:

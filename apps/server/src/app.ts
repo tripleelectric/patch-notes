@@ -13,7 +13,7 @@ import { adminRoutes } from './routes/admin.js'
 import { authRoutes } from './routes/auth.js'
 import { inviteRoutes } from './routes/invite.js'
 import { publishRoutes } from './routes/publish.js'
-import { HomePage } from './views/home.js'
+import { viewerRoutes } from './routes/viewer.js'
 import { MessagePage } from './views/auth.js'
 
 declare module 'fastify' {
@@ -133,7 +133,7 @@ export async function buildApp(config: Config, options: AppOptions = {}) {
   authRoutes(app)
   inviteRoutes(app)
   adminRoutes(app)
-  app.get('/', async (request, reply) => sendHtml(reply, HomePage({ user: request.user! })))
+  viewerRoutes(app)
 
   return app
 }

@@ -10,7 +10,8 @@
     "build": "pnpm -r build",
     "test": "vitest run",
     "typecheck": "pnpm -r typecheck",
-    "postinstall": "pnpm --filter @patch-notes/server generate"
+    "postinstall": "pnpm --filter @patch-notes/server generate",
+    "demo": "bash scripts/demo.sh"
   },
   "devDependencies": {
     "@types/node": "26.6.6",

@@ -2,28 +2,36 @@ import type { PropsWithChildren } from '@kitajs/html'
 import type { SessionUser } from '../auth.js'
 import { Layout } from './layout.js'
 
-export function Shell({ title, user, children }: PropsWithChildren<{ title: string; user: SessionUser }>) {
+export function Shell({ title, user, sidebar, children }: PropsWithChildren<{ title: string; user: SessionUser; sidebar?: JSX.Element }>) {
   return (
     <Layout title={`${title} - patch-notes`}>
       <header class="border-b border-stone-200 bg-white">
-        <nav class="mx-auto flex max-w-5xl items-center gap-6 px-6 py-3 text-sm">
+        <nav class="mx-auto flex max-w-6xl items-center gap-6 px-6 py-3 text-sm">
           <a href="/" class="font-semibold tracking-tight">
             patch-notes
           </a>
-          {user.role === 'admin' && (
+          <a href="/" class="text-stone-600 hover:text-stone-900">
+            Releases
+          </a>
+          {user.role === 'admin' ? (
             <a href="/admin/users" class="text-stone-600 hover:text-stone-900">
               Users
             </a>
+          ) : (
+            ''
           )}
-          <span class="ml-auto text-stone-500" safe>
+          <span class="ml-auto hidden text-stone-500 sm:inline" safe>
             {user.name}
           </span>
-          <form method="post" action="/logout">
+          <form method="post" action="/logout" class="ml-auto sm:ml-0">
             <button class="text-stone-600 hover:text-stone-900">Log out</button>
           </form>
         </nav>
       </header>
-      <main class="mx-auto max-w-5xl px-6 py-8">{children}</main>
+      <div class="mx-auto max-w-6xl px-6 py-8 lg:flex lg:gap-10">
+        {sidebar ? <aside class="mb-6 lg:mb-0 lg:w-52 lg:shrink-0">{sidebar}</aside> : ''}
+        <main class="min-w-0 grow">{children}</main>
+      </div>
     </Layout>
   )
 }

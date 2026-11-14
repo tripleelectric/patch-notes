@@ -13,7 +13,9 @@ export function Layout({ title, children }: PropsWithChildren<{ title: string }>
         <link rel="stylesheet" href="/assets/app.css" />
         <script src="/assets/htmx.min.js" defer></script>
       </head>
-      <body class="min-h-screen bg-stone-50 text-stone-900 antialiased">{children}</body>
+      <body class="min-h-screen bg-stone-50 text-stone-900 antialiased" hx-boost="true">
+        {children}
+      </body>
     </html>
   )
 }
