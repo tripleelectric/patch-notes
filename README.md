@@ -96,7 +96,7 @@ patchnotes agent-snippet --write AGENTS.md   # teach coding agents to write entr
 
 ## Demo
 
-`pnpm demo` builds the image, starts a fresh container on `http://localhost:3000` (`DEMO_PORT` to change), publishes `examples/demo-project` and seeds two reviewers with review history. Logins are printed at the end. Needs Docker.
+`pnpm demo` builds the image, starts a fresh container on `http://localhost:3000` (`DEMO_PORT` to change; `DEMO_HOST=<lan-ip>` to open it from another machine), publishes `examples/demo-project` and seeds two reviewers with review history. Logins are printed at the end. Needs Docker.
 
 ## Server
 

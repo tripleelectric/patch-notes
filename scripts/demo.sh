@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
-# Starts a fresh local patch-notes container with demo data. Usage: pnpm demo (optional DEMO_PORT, default 3000).
+# Starts a fresh local patch-notes container with demo data.
+# Usage: pnpm demo (optional DEMO_PORT, default 3000; DEMO_HOST, default localhost, e.g. a LAN IP to open it from another machine).
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
 PORT=${DEMO_PORT:-3000}
-URL="http://localhost:$PORT"
+URL="http://${DEMO_HOST:-localhost}:$PORT"
 TOKEN=demo-publish-token-0123456789abcdef
 ADMIN_EMAIL=admin@example.com
 ADMIN_PASSWORD=demo-admin-password
