@@ -62,6 +62,7 @@ patchnotes.yaml       (bearer token)       UI   <  reviewers (login)
 dir: .patchnotes                          # default
 server: https://patchnotes.example.com    # optional
 appUrl: https://app.example.com           # optional, base for path try links
+language: de                              # en (default) or de: headings of new entries, agent instructions
 ```
 
 The publish token comes from env `PATCHNOTES_TOKEN`, never from the file.
@@ -88,7 +89,7 @@ patchnotes agent-snippet --write AGENTS.md   # teach coding agents to write entr
 
 - `new` writes `.patchnotes/unreleased/<id>.md` (id from the title, or `--id`) and prints its path. A path `--try` needs `appUrl` in `patchnotes.yaml`.
 - `check` reports every problem at once as `path: field: message`.
-- `release` runs the check, then moves all `unreleased/` entries into `vX.Y.Z/`. It does not touch git.
+- `release` runs the check, then moves all `unreleased/` entries into `vX.Y.Z/` and records the ship date in `vX.Y.Z/release.yaml` (today, or `--date YYYY-MM-DD`). It does not touch git.
 - `publish` runs the check, uploads media the server does not have yet and publishes all entries as one snapshot to `server` from `patchnotes.yaml`. Entries deleted from the repo disappear from the viewer; review status is kept unless an entry's content changed.
 - `agent-snippet` prints instructions for coding agents; `--write <file>` keeps them up to date between `<!-- patchnotes:start/end -->` markers without touching the rest of the file.
 - Media: `.png`, `.jpg`, `.jpeg`, `.webp`, `.gif` images and `.mp4`, `.webm` videos, up to 200 MB each.
@@ -96,7 +97,7 @@ patchnotes agent-snippet --write AGENTS.md   # teach coding agents to write entr
 
 ## Demo
 
-`pnpm demo` builds the image, starts a fresh container on `http://localhost:3000` (`DEMO_PORT` to change; `DEMO_HOST=<lan-ip>` to open it from another machine), publishes `examples/demo-project` and seeds two reviewers with review history. Logins are printed at the end. Needs Docker.
+`pnpm demo` builds the image, starts a fresh container on `http://localhost:3000` (`DEMO_PORT` to change; `DEMO_HOST=<ip>` to open it from another machine; German by default, `DEMO_LANGUAGE=en` for English), publishes `examples/demo-project` and seeds two reviewers with review history. Logins are printed at the end. Needs Docker.
 
 ## Server
 
@@ -115,9 +116,12 @@ docker run -p 3000:3000 -v patchnotes-data:/data \
 | `BASE_URL` | yes | public URL of the server, used for links and the request origin check |
 | `DATA_DIR` | no | data directory, default `/data` in the image (`./data` otherwise): SQLite database, media, generated auth secret |
 | `PORT`, `HOST` | no | listen address, default `0.0.0.0:3000` |
+| `LANGUAGE` | no | interface language, `en` (default) or `de` |
 | `AUTH_SECRET` | no | session signing secret (32+ characters); generated once into `DATA_DIR` when missing |
 | `ADMIN_EMAIL`, `ADMIN_PASSWORD` | no | creates the first admin when the database has no users; ignored afterwards |
 | `PUBLISH_TOKEN` | no | bearer token (32+ characters) the CLI sends as `PATCHNOTES_TOKEN`; publishing is disabled without it |
+
+Reading first: every patch is one page with numbered entries. Reviewers comment or request changes on an entry; a change request is cleared by publishing a changed entry or with "Mark as resolved". There is no approval step.
 
 Users: the first admin comes from `ADMIN_*`. Everyone else gets an invite link from an admin (`Users` page); links work once and expire after 7 days. Roles: `admin` manages users, `reviewer` reviews. There is no password reset by email: an admin removes the user and sends a new invite.
 

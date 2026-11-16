@@ -1,13 +1,13 @@
 ---
 id: bulk-archive
-title: Archive several invoices at once
+title: Mehrere Rechnungen auf einmal archivieren
 type: feature
 date: 2026-11-11
 media:
   - image: media/bulk-archive.png
 ---
-## What changed
-Invoices in the list can be selected with checkboxes and archived together.
+## Was hat sich geändert
+Rechnungen in der Liste lassen sich per Checkbox auswählen und gemeinsam archivieren.
 
-## Decisions
-- Only paid and cancelled invoices can be archived.
+## Entscheidungen
+- Nur bezahlte und stornierte Rechnungen können archiviert werden.

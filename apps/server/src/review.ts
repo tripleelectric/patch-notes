@@ -1,7 +1,7 @@
 import type { PrismaClient } from './generated/prisma/client.js'
 import { t } from './i18n.js'
 
-export const STATUSES = ['awaiting-review', 'accepted', 'changes-requested'] as const
+export const STATUSES = ['open', 'changes-requested'] as const
 export type Status = (typeof STATUSES)[number]
 export const TYPES = ['feature', 'fix', 'change'] as const
 
@@ -40,10 +40,10 @@ export async function releaseSummaries(prisma: PrismaClient): Promise<ReleaseSum
     const summary = byVersion.get(row.version) ?? {
       version: row.version,
       total: 0,
-      counts: { 'awaiting-review': 0, accepted: 0, 'changes-requested': 0 },
+      counts: { open: 0, 'changes-requested': 0 },
       date: row.version === null ? undefined : dates.get(row.version),
     }
-    const status = (STATUSES as readonly string[]).includes(row.status) ? (row.status as Status) : 'awaiting-review'
+    const status: Status = row.status === 'changes-requested' ? 'changes-requested' : 'open'
     summary.counts[status] += row._count._all
     summary.total += row._count._all
     byVersion.set(row.version, summary)

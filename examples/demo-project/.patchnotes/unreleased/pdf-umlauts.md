@@ -1,6 +1,6 @@
 ---
 id: pdf-umlauts
-title: Umlauts in invoice PDFs
+title: Umlaute in Rechnungs-PDFs
 type: fix
 date: 2026-11-10
 requests:
@@ -8,7 +8,7 @@ requests:
 media:
   - before: media/pdf-before.png
     after: media/pdf-after.png
-    caption: Customer names and addresses with ä, ö, ü and ß.
+    caption: Kundennamen und Adressen mit ä, ö, ü und ß.
 ---
-## What changed
-Names and addresses with umlauts or ß were printed as question marks in PDF invoices. The PDF renderer now embeds a font with full Latin coverage.
+## Was hat sich geändert
+Namen und Adressen mit Umlauten oder ß wurden in PDF-Rechnungen als Fragezeichen gedruckt. Der PDF-Renderer bettet jetzt eine Schrift mit vollständigem lateinischem Zeichensatz ein.

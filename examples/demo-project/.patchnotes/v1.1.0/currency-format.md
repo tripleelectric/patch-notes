@@ -1,8 +1,8 @@
 ---
 id: currency-format
-title: Amounts use the customer's locale
+title: Beträge im Format des Kundenlandes
 type: fix
 date: 2026-11-06
 ---
-## What changed
-Amounts in emails and PDFs are formatted for the customer's country (`1.240,00 €` in Germany, `€1,240.00` in Ireland) instead of always using the German format.
+## Was hat sich geändert
+Beträge in E-Mails und PDFs werden im Format des Kundenlandes angezeigt (`1.240,00 €` in Deutschland, `€1,240.00` in Irland) statt immer im deutschen Format.

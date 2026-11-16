@@ -5,16 +5,17 @@ import { formBody, isHtmx } from '../http.js'
 import { t, translate, type MessageKey } from '../i18n.js'
 import { renderMarkdown } from '../markdown.js'
 import { mediaDir } from '../media.js'
-import { appUrl, releaseEntries, releasePath, releaseSummaries, resolveTry, STATUSES, type Status } from '../review.js'
+import { appUrl, releaseEntries, releasePath, releaseSummaries, resolveTry, type Status } from '../review.js'
 import { MessagePage } from '../views/auth.js'
 import { entryAnchor, EntrySection, RemovedEntryPage, type EntryView } from '../views/entry.js'
 import { EmptyPage, ReleasePage } from '../views/release.js'
 
 const reviewSchema = z.object({
-  action: z.enum(['accept', 'request-changes', 'comment']),
+  action: z.enum(['comment', 'request-changes', 'resolve']),
   body: z.string().trim().max(5000, 'review.tooLong' satisfies MessageKey),
 })
-const EVENT_KIND = { accept: 'accepted', 'request-changes': 'changes-requested', comment: 'comment' } as const
+const EVENT_KIND = { comment: 'comment', 'request-changes': 'changes-requested', resolve: 'resolved' } as const
+const NEXT_STATUS = { comment: undefined, 'request-changes': 'changes-requested', resolve: 'open' } as const
 const MEDIA_FILE = /^[0-9a-f]{64}\.(png|jpg|webp|gif|mp4|webm)$/
 
 const notFound = (reply: FastifyReply, what: 'release' | 'entry' | 'file') =>
@@ -40,7 +41,7 @@ export function viewerRoutes(app: FastifyInstance) {
     const summary = releases.find((r) => r.version === version)
     if (!summary) return notFound(reply, 'release')
     const status = (request.query as { status?: string }).status
-    const filter = (STATUSES as readonly string[]).includes(status ?? '') ? (status as Status) : undefined
+    const filter: Status | undefined = status === 'changes-requested' ? status : undefined
     const base = await appUrl(prisma)
     const entries = (await releaseEntries(prisma, version)).map((entry, index) => ({
       ...entry,
@@ -80,15 +81,17 @@ export function viewerRoutes(app: FastifyInstance) {
       ? translate(parsed.error.issues[0]?.message ?? 'review.invalid')
       : entry.removedAt
         ? t('review.removed')
-        : parsed.data.action !== 'accept' && parsed.data.body === ''
+        : parsed.data.action !== 'resolve' && parsed.data.body === ''
           ? t(parsed.data.action === 'request-changes' ? 'review.needChanges' : 'review.needComment')
           : undefined
 
-    if (!error && parsed.success) {
+    // Resolving is a no-op unless changes are requested.
+    if (!error && parsed.success && !(parsed.data.action === 'resolve' && entry.status !== 'changes-requested')) {
       const { action, body } = parsed.data
+      const status = NEXT_STATUS[action]
       await prisma.$transaction([
         prisma.reviewEvent.create({ data: { entryId: id, userId: request.user!.id, kind: EVENT_KIND[action], body: body || null } }),
-        ...(action === 'comment' ? [] : [prisma.entry.update({ where: { id }, data: { status: EVENT_KIND[action] } })]),
+        ...(status ? [prisma.entry.update({ where: { id }, data: { status } })] : []),
       ])
     }
 

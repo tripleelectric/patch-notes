@@ -1,18 +1,18 @@
 ---
 id: recurring-invoices
-title: Recurring invoices
+title: Wiederkehrende Rechnungen
 type: feature
 date: 2026-10-06
 requests:
   - https://app.asana.com/0/1208000000000001/1208000000000101
 try: /invoices/recurring
 ---
-## What changed
-Invoices can repeat monthly, quarterly or yearly. Acme Billing creates the next invoice on the due day and sends it with the customer's usual template.
+## Was hat sich geändert
+Rechnungen können sich monatlich, quartalsweise oder jährlich wiederholen. Acme Billing erstellt die nächste Rechnung am Stichtag und verschickt sie mit der gewohnten Vorlage des Kunden.
 
-## Why
-Retainer customers were billed by copying last month's invoice by hand.
+## Warum
+Rechnungen für Retainer-Kunden wurden jeden Monat von Hand aus der Vormonatsrechnung kopiert.
 
-## Decisions
-- Recurring invoices start as drafts for the first cycle, then send automatically.
-- No custom intervals yet (every 6 weeks etc.).
+## Entscheidungen
+- Der erste Zyklus startet als Entwurf, danach wird automatisch versendet.
+- Noch keine freien Intervalle (z. B. alle 6 Wochen).

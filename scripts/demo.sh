@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Starts a fresh local patch-notes container with demo data.
-# Usage: pnpm demo (optional DEMO_PORT, default 3000; DEMO_HOST, default localhost, e.g. a LAN IP to open it from another machine).
+# Usage: pnpm demo (optional DEMO_PORT, default 3000; DEMO_HOST, default localhost, e.g. a LAN IP to open it from another machine;
+# DEMO_LANGUAGE, default de).
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
@@ -14,7 +15,7 @@ docker build -q -t patch-notes:demo . >/dev/null
 docker rm -f patch-notes-demo >/dev/null 2>&1 || true
 docker volume rm patch-notes-demo-data >/dev/null 2>&1 || true
 docker run -d --restart unless-stopped --name patch-notes-demo -p "$PORT:3000" -v patch-notes-demo-data:/data \
-  -e BASE_URL="$URL" -e ADMIN_EMAIL="$ADMIN_EMAIL" -e ADMIN_PASSWORD="$ADMIN_PASSWORD" -e PUBLISH_TOKEN="$TOKEN" \
+  -e BASE_URL="$URL" -e LANGUAGE="${DEMO_LANGUAGE:-de}" -e ADMIN_EMAIL="$ADMIN_EMAIL" -e ADMIN_PASSWORD="$ADMIN_PASSWORD" -e PUBLISH_TOKEN="$TOKEN" \
   patch-notes:demo >/dev/null
 
 for _ in $(seq 1 30); do

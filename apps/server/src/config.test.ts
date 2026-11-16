@@ -34,3 +34,8 @@ it('accepts German and rejects unsupported languages', () => {
   const result = loadConfig({ BASE_URL: 'https://x.example.com', LANGUAGE: 'fr' })
   expect(!result.ok && result.errors[0]).toMatch(/^LANGUAGE: /)
 })
+
+it('rejects an invalid ADMIN_EMAIL', () => {
+  const result = loadConfig({ BASE_URL: 'https://x.example.com', ADMIN_EMAIL: 'lead' })
+  expect(!result.ok && result.errors[0]).toMatch(/^ADMIN_EMAIL: /)
+})

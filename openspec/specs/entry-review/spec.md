@@ -6,13 +6,6 @@ Captures each reviewer verdict and discussion on an entry where the entry is sho
 
 ## Requirements
 
-### Requirement: Accept
-Any logged-in user SHALL be able to accept an entry that is not removed, optionally with a comment. The status SHALL become `accepted` and an `accepted` event with the user SHALL be added to the history.
-
-#### Scenario: Accept entry
-- **WHEN** a reviewer accepts an entry awaiting review
-- **THEN** its status is `accepted` and the history shows the reviewer's acceptance
-
 ### Requirement: Request changes
 Any logged-in user SHALL be able to request changes on an entry that is not removed. A non-empty comment SHALL be required. The status SHALL become `changes-requested` and a `changes-requested` event with the comment SHALL be added.
 
@@ -38,15 +31,26 @@ Each entry section SHALL contain a collapsible history listing all events oldest
 - **WHEN** changes were requested and a later publish changed the entry
 - **THEN** the history shows the request followed by an `updated` event and the status is `awaiting-review`
 
-### Requirement: In-place review
+### Requirement: Resolve change request
+Any logged-in user SHALL be able to mark an open change request as resolved, optionally with a comment. The status SHALL become `open` and a `resolved` event SHALL be added. The action SHALL only be offered while changes are requested.
+
+#### Scenario: Resolve
+- **WHEN** a reviewer marks a change request as resolved
+- **THEN** the status is `open` and the history shows the resolution
+
+#### Scenario: Nothing to resolve
+- **WHEN** an entry has no change request
+- **THEN** its section offers no resolve action and a resolve request leaves it unchanged
+
+### Requirement: In-place feedback
 A review action sent by htmx SHALL respond with the updated entry section only, including validation errors, so the page keeps its scroll position. Without htmx the action SHALL redirect to `/releases/<release>#entry-<id>`, or show the release page with the error at the entry and status `400`.
 
-#### Scenario: htmx accept
-- **WHEN** a reviewer accepts an entry with header `HX-Request: true`
-- **THEN** the response is the entry's section showing status "Accepted"
+#### Scenario: htmx comment
+- **WHEN** a reviewer comments on an entry with header `HX-Request: true`
+- **THEN** the response is the entry's section showing the comment in its history
 
 #### Scenario: Plain form
-- **WHEN** a reviewer accepts an entry without htmx
+- **WHEN** a reviewer comments on an entry without htmx
 - **THEN** the response redirects to the entry's anchor on its release page
 
 #### Scenario: htmx validation error

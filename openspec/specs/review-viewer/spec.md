@@ -33,29 +33,15 @@ Shows reviewers what shipped, release by release and entry by entry, with everyt
 - **THEN** the response is `404`
 
 ### Requirement: Release navigation
-Every release page SHALL show all releases with entries, Unreleased first, then versions from highest to lowest, each with its entry count. Under the current release it SHALL list that release's entries as links to their anchors, each with its review status.
+Every release page SHALL show all releases with entries, Unreleased first, then versions from highest to lowest, each with its entry count and, when there are any, its number of open change requests. Under the current release it SHALL list that release's entries as links to their anchors, marking entries with changes requested.
 
 #### Scenario: Version ordering
 - **WHEN** versions `1.2.0`, `1.10.0` and `1.9.1` exist
 - **THEN** the release navigation lists them as `1.10.0`, `1.9.1`, `1.2.0`
 
 #### Scenario: Entry links
-- **WHEN** a user opens a release containing entry `invoice-export`
-- **THEN** the navigation links to `#entry-invoice-export` and shows that entry's status
-
-### Requirement: Review progress
-Each release page SHALL show how many of its entries are accepted, have changes requested and await review.
-
-#### Scenario: Mixed statuses
-- **WHEN** a release has 2 accepted, 1 changes-requested and 1 awaiting-review entry
-- **THEN** the page shows "2 of 4 accepted", "1 changes requested" and "1 awaiting review"
-
-### Requirement: Status filter
-A release page SHALL accept `?status=awaiting-review|accepted|changes-requested` and then list only entries with that status.
-
-#### Scenario: Only awaiting
-- **WHEN** a user opens `/releases/unreleased?status=awaiting-review`
-- **THEN** only entries awaiting review are listed
+- **WHEN** a user opens a release containing entry `invoice-export` with changes requested
+- **THEN** the navigation links to `#entry-invoice-export` and marks it as having changes requested
 
 ### Requirement: Try link
 When an entry has `try`, the page SHALL show a "Try it" link: the URL itself when absolute, or the path appended to the published `appUrl`. Without an `appUrl` a path SHALL be shown as text, not as a link.
@@ -124,4 +110,11 @@ All pages SHALL use the interface language set by `LANGUAGE` for labels, message
 
 #### Scenario: German interface
 - **WHEN** the server runs with `LANGUAGE=de`
-- **THEN** the login page shows "Anmelden" and statuses read "Wartet auf Review", "Akzeptiert" and "Änderungen angefragt", and dates read like `14.11.2026`
+- **THEN** the login page shows "Anmelden", a change request reads "Änderungen angefragt", and dates read like `14.11.2026`
+
+### Requirement: Change request filter
+A release page SHALL accept `?status=changes-requested` and then list only entries with an open change request; the filter SHALL be offered only when the release has such entries.
+
+#### Scenario: Only change requests
+- **WHEN** a user opens `/releases/unreleased?status=changes-requested`
+- **THEN** only entries with changes requested are listed

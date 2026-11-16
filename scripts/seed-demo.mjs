@@ -64,23 +64,20 @@ try {
   const petra = await ensureReviewer(admin, REVIEWERS.petra)
   const markus = await ensureReviewer(admin, REVIEWERS.markus)
 
-  for (const id of ['recurring-invoices', 'stripe-payments', 'due-date-timezone', 'customer-portal', 'login-redirect']) {
-    await review(petra, id, 'accept')
-  }
-  await review(markus, 'new-navigation', 'accept', 'Much better on the dashboard. Checked on a 13" laptop, the collapsed sidebar works.')
-  await review(markus, 'currency-format', 'comment', 'Asked two Irish customers, both confirmed the new format.')
-  await review(petra, 'currency-format', 'accept')
+  await review(petra, 'recurring-invoices', 'comment', 'Super, das spart der Buchhaltung jeden Monat einen halben Tag.')
+  await review(markus, 'new-navigation', 'comment', 'Auf dem 13"-Laptop geprüft, die eingeklappte Seitenleiste funktioniert.')
+  await review(petra, 'currency-format', 'request-changes', 'Steht bei irischen Kunden das Euro-Zeichen wirklich vor dem Betrag?')
+  await review(markus, 'currency-format', 'resolve', 'Ja, so ist es in Irland üblich. Zwei Kunden haben es bestätigt.')
 
-  await review(markus, 'invoice-csv-export', 'comment', 'Can we add the customer number as a column? Accounting matches on it.')
-  await review(petra, 'payment-reminders', 'accept', "Great. Let's announce this in the December newsletter.")
-  await review(markus, 'vat-rounding', 'accept')
-  await review(petra, 'pdf-umlauts', 'request-changes', 'The customer name is fixed, but the street still shows "K?nigstraße" in the PDF preview.')
+  await review(markus, 'invoice-csv-export', 'request-changes', 'Bitte die Kundennummer als Spalte ergänzen, die Buchhaltung gleicht darüber ab.')
+  await review(petra, 'payment-reminders', 'comment', 'Sehr gut. Das kündigen wir im Dezember-Newsletter an.')
+  await review(petra, 'pdf-umlauts', 'request-changes', 'Der Kundenname stimmt jetzt, aber die Straße zeigt in der PDF-Vorschau noch „K?nigstraße“.')
 
-  // The developer fixes the address line and publishes again: the entry returns to "awaiting review".
+  // The developer fixes the address line and publishes again: the change request is cleared by the update.
   const entry = join(project, '.patchnotes/unreleased/pdf-umlauts.md')
-  writeFileSync(entry, `${readFileSync(entry, 'utf8').trimEnd()}\n\nAddress lines use the same font now, so street names with umlauts print correctly too.\n`)
+  writeFileSync(entry, `${readFileSync(entry, 'utf8').trimEnd()}\n\nAdresszeilen nutzen jetzt dieselbe Schrift, Straßennamen mit Umlauten werden also auch korrekt gedruckt.\n`)
   publish(project)
-  await review(markus, 'pdf-umlauts', 'comment', 'Checked the preview for Königstraße and Mühlenweg, both fine now.')
+  await review(markus, 'pdf-umlauts', 'comment', 'Vorschau für Königstraße und Mühlenweg geprüft, beides passt jetzt.')
   console.log('seeded reviewers and reviews')
 } finally {
   rmSync(project, { recursive: true, force: true })

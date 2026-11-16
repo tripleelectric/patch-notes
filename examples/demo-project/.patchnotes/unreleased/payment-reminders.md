@@ -1,6 +1,6 @@
 ---
 id: payment-reminders
-title: Automatic payment reminders
+title: Automatische Zahlungserinnerungen
 type: feature
 date: 2026-11-12
 requests:
@@ -9,14 +9,14 @@ requests:
 try: /settings/reminders
 media:
   - image: media/reminders.png
-    caption: Three reminder levels, each can be switched off.
+    caption: Drei Erinnerungsstufen, jede einzeln abschaltbar.
 ---
-## What changed
-Overdue invoices trigger up to three reminder emails. Each level has its own delay and text; the final notice can add a late fee.
+## Was hat sich geändert
+Überfällige Rechnungen lösen bis zu drei Erinnerungs-E-Mails aus. Jede Stufe hat eine eigene Wartezeit und einen eigenen Text; die letzte Mahnung kann eine Mahngebühr enthalten.
 
-## Why
-Overdue invoices were chased by hand from a spreadsheet; 30 % of them were reminded late or not at all.
+## Warum
+Überfällige Rechnungen wurden von Hand aus einer Tabelle nachverfolgt; 30 % wurden zu spät oder gar nicht erinnert.
 
-## Decisions
-- Reminders are never sent on weekends or public holidays.
-- Late fees are opt-in per customer.
+## Entscheidungen
+- Erinnerungen gehen nie am Wochenende oder an Feiertagen raus.
+- Mahngebühren werden pro Kunde aktiviert.

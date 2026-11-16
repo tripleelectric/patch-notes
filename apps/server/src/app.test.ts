@@ -1,10 +1,10 @@
-import { existsSync } from 'node:fs'
+import { existsSync, readdirSync } from 'node:fs'
 import { cp, mkdir, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import Database from 'better-sqlite3'
 import { describe, expect, it } from 'vitest'
 import { buildApp } from './app.js'
-import { MIGRATIONS_DIR } from './db.js'
+import { migrate, MIGRATIONS_DIR } from './db.js'
 import { login, testApp, testConfig, tmpDir } from './test-utils.js'
 
 describe('startup', () => {
@@ -35,6 +35,31 @@ describe('startup', () => {
     const db = new Database(join(dataDir, 'patchnotes.db'))
     expect(db.prepare('SELECT name FROM _patchnotes_migrations ORDER BY name').pluck().all().slice(-2)).toEqual(['zz_001_init', 'zz_002_more'])
     db.close()
+  })
+
+  it('migrates old review statuses to the reading-first model', async () => {
+    const dataDir = await tmpDir()
+    const all = readdirSync(MIGRATIONS_DIR).filter((name) => !name.endsWith('.toml')).sort()
+    const before = join(await tmpDir(), 'migrations')
+    for (const name of all.slice(0, all.indexOf(all.find((n) => n.endsWith('_reading_first_status'))!))) {
+      await cp(join(MIGRATIONS_DIR, name), join(before, name), { recursive: true })
+    }
+    migrate(join(dataDir, 'patchnotes.db'), before)
+    const db = new Database(join(dataDir, 'patchnotes.db'))
+    const insert = db.prepare(
+      `INSERT INTO "Entry" (id, path, title, type, date, requests, media, body, contentHash, status, publishedAt) VALUES (?, 'p', 't', 'fix', '2026-11-14', '[]', '[]', '', 'h', ?, 0)`,
+    )
+    for (const [id, status] of [['a', 'accepted'], ['b', 'awaiting-review'], ['c', 'changes-requested']]) insert.run(id, status)
+    db.close()
+
+    migrate(join(dataDir, 'patchnotes.db'))
+    const after = new Database(join(dataDir, 'patchnotes.db'))
+    expect(after.prepare('SELECT id, status FROM "Entry" ORDER BY id').all()).toEqual([
+      { id: 'a', status: 'open' },
+      { id: 'b', status: 'open' },
+      { id: 'c', status: 'changes-requested' },
+    ])
+    after.close()
   })
 
   it('stops on a failing migration', async () => {

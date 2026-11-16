@@ -106,7 +106,7 @@ model Entry {
   media            Json
   body             String
   contentHash      String
-  status           String        @default("awaiting-review")
+  status           String        @default("open")
   firstPublishedAt DateTime      @default(now())
   publishedAt      DateTime
   removedAt        DateTime?

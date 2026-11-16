@@ -26,19 +26,21 @@ describe('interface language', () => {
     expect((await app.inject('/login')).body).toContain('Anmelden')
     const body = (await app.inject({ url: '/releases/unreleased', headers: { cookie } })).body
     expect(body).toContain('<html lang="de">')
-    expect(body).toContain('Wartet auf Review')
     expect(body).toContain('14.11.2026')
     expect(body).toContain('Noch nicht veröffentlicht')
     const review = await post(app, '/entries/a/review', { action: 'request-changes', body: '' }, cookie, { 'hx-request': 'true' })
     expect(review.body).toContain('Beschreibe, welche Änderungen du brauchst.')
-    await app.prisma.entry.update({ where: { id: 'a' }, data: { status: 'accepted' } })
-    expect((await app.inject({ url: '/releases/unreleased', headers: { cookie } })).body).toContain('Akzeptiert')
+    await app.prisma.entry.update({ where: { id: 'a' }, data: { status: 'changes-requested' } })
+    const flagged = (await app.inject({ url: '/releases/unreleased', headers: { cookie } })).body
+    expect(flagged).toContain('Änderungen angefragt')
+    expect(flagged).toContain('1 offener Änderungswunsch')
+    expect(flagged).toContain('Als erledigt markieren')
   })
 
   it('uses English by default', async () => {
     const { app, cookie } = await setup('en', [entry('a')])
     const body = (await app.inject({ url: '/releases/unreleased', headers: { cookie } })).body
-    expect(body).toContain('Awaiting review')
+    expect(body).toContain('Comment')
     expect(body).toContain('Nov 14, 2026')
   })
 
@@ -76,19 +78,19 @@ describe('release dates', () => {
 describe('position numbers', () => {
   it('numbers entries in release order and keeps numbers when filtered', async () => {
     const { app, cookie } = await setup('en', [entry('fix-one', null, 'fix'), entry('feature-one')])
-    await app.prisma.entry.update({ where: { id: 'feature-one' }, data: { status: 'accepted' } })
+    await app.prisma.entry.update({ where: { id: 'fix-one' }, data: { status: 'changes-requested' } })
     const body = (await app.inject({ url: '/releases/unreleased', headers: { cookie } })).body
     expect(body).toMatch(/id="entry-feature-one"[\s\S]*?>1<\/span>/)
     expect(body).toMatch(/id="entry-fix-one"[\s\S]*?>2<\/span>/)
     expect(body).toMatch(/>2\.<\/span>[\s\S]*?Title fix-one/)
-    const filtered = (await app.inject({ url: '/releases/unreleased?status=awaiting-review', headers: { cookie } })).body
+    const filtered = (await app.inject({ url: '/releases/unreleased?status=changes-requested', headers: { cookie } })).body
     expect(filtered).not.toContain('id="entry-feature-one"')
     expect(filtered).toMatch(/id="entry-fix-one"[\s\S]*?>2<\/span>/)
   })
 
   it('keeps the number in htmx review fragments', async () => {
     const { app, cookie } = await setup('en', [entry('fix-one', null, 'fix'), entry('feature-one')])
-    const response = await post(app, '/entries/fix-one/review', { action: 'accept', body: '' }, cookie, { 'hx-request': 'true' })
+    const response = await post(app, '/entries/fix-one/review', { action: 'comment', body: 'Hi' }, cookie, { 'hx-request': 'true' })
     expect(response.body).toMatch(/>2<\/span>/)
   })
 })

@@ -1,6 +1,6 @@
 ---
 id: customer-portal
-title: Customer portal with all invoices
+title: Kundenportal mit allen Rechnungen
 type: feature
 date: 2026-11-03
 requests:
@@ -8,14 +8,14 @@ requests:
 try: /portal
 media:
   - image: media/portal.png
-    caption: Customers see open, overdue and paid totals at a glance.
+    caption: Kunden sehen offene, überfällige und bezahlte Summen auf einen Blick.
 ---
-## What changed
-Customers get a personal link to a portal that lists all their invoices, lets them download PDFs and pay everything that is open in one go.
+## Was hat sich geändert
+Kunden bekommen einen persönlichen Link zu einem Portal mit all ihren Rechnungen. Dort können sie PDFs herunterladen und alles Offene in einem Schritt bezahlen.
 
-## Why
-Support answered several "can you resend invoice X" emails per day.
+## Warum
+Der Support hat mehrmals täglich Anfragen wie „Können Sie Rechnung X nochmal schicken?“ beantwortet.
 
-## Decisions
-- Access by magic link only, no customer passwords.
-- The portal shows the last 24 months.
+## Entscheidungen
+- Zugang nur per Magic Link, keine Kundenpasswörter.
+- Das Portal zeigt die letzten 24 Monate.

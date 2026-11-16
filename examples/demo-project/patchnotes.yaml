@@ -1,3 +1,4 @@
 # Demo project for patch-notes. scripts/demo.sh publishes it to a local server.
 server: http://localhost:3000
 appUrl: https://example.com
+language: de

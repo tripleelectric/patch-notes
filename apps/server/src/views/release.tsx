@@ -1,7 +1,7 @@
 import type { SessionUser } from '../auth.js'
 import { formatDate, t } from '../i18n.js'
-import { releaseLabel, releasePath, STATUSES, TYPES, type ReleaseSummary, type Status } from '../review.js'
-import { Progress, ReleaseNav, statusLabel, typePlural } from './components.js'
+import { releaseLabel, releasePath, TYPES, type ReleaseSummary, type Status } from '../review.js'
+import { openRequestsLabel, ReleaseNav, typePlural } from './components.js'
 import { EntrySection, type EntryExtras, type EntryView } from './entry.js'
 import { Shell } from './shell.js'
 
@@ -11,10 +11,7 @@ export function ReleasePage(props: { user: SessionUser; releases: ReleaseSummary
   const { user, releases, summary, entries, filter } = props
   const base = releasePath(summary.version)
   const visible = filter ? entries.filter((e) => e.status === filter) : entries
-  const tabs: Array<[Status | undefined, string, number]> = [
-    [undefined, t('release.all'), summary.total],
-    ...STATUSES.map((s): [Status, string, number] => [s, statusLabel(s), summary.counts[s]]),
-  ]
+  const requests = summary.counts['changes-requested']
   const sidebar = (
     <div class="lg:sticky lg:top-6 lg:max-h-[calc(100vh-3rem)] lg:overflow-y-auto">
       <ReleaseNav releases={releases} current={summary.version} entries={visible} />
@@ -37,26 +34,21 @@ export function ReleasePage(props: { user: SessionUser; releases: ReleaseSummary
         )}
         <span aria-hidden="true">·</span>
         <span safe>{summary.total === 1 ? t('release.entry') : t('release.entries', { count: summary.total })}</span>
-      </p>
-      <div class="mt-6 rounded-lg border border-stone-200 bg-white p-4">
-        <Progress counts={summary.counts} total={summary.total} />
-      </div>
-
-      <div class="mt-6 flex flex-wrap gap-2" role="list" aria-label={t('nav.filter')}>
-        {tabs.map(([status, label, count]) => (
+        {requests > 0 ? (
           <a
-            role="listitem"
-            href={status ? `${base}?status=${status}` : base}
-            aria-current={status === filter ? 'page' : undefined}
-            class={`rounded-full px-3 py-1 text-sm ${
-              status === filter ? 'bg-stone-900 text-white' : 'bg-white text-stone-700 ring-1 ring-stone-200 hover:bg-stone-100'
+            href={filter ? base : `${base}?status=changes-requested`}
+            class={`rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ring-inset ${
+              filter ? 'bg-rose-600 text-white ring-rose-600' : 'bg-rose-50 text-rose-800 ring-rose-200 hover:bg-rose-100'
             }`}
+            aria-current={filter ? 'page' : undefined}
+            safe
           >
-            <span safe>{label}</span> <span class="tabular-nums opacity-70" safe>{String(count)}</span>
+            {openRequestsLabel(requests)}
           </a>
-        ))}
-      </div>
-
+        ) : (
+          ''
+        )}
+      </p>
       {visible.length === 0 ? (
         <p class="mt-10 text-sm text-stone-500" safe>
           {t('release.noneWithStatus')}

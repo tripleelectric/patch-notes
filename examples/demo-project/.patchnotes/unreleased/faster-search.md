@@ -1,8 +1,8 @@
 ---
 id: faster-search
-title: Faster customer search
+title: Schnellere Kundensuche
 type: change
 date: 2026-11-08
 ---
-## What changed
-Searching customers responds while typing and also matches VAT IDs and email addresses. Large accounts (20,000+ customers) get results in under 200 ms instead of 3 seconds.
+## Was hat sich geändert
+Die Kundensuche reagiert schon beim Tippen und findet auch USt-IdNr. und E-Mail-Adressen. Große Accounts (über 20.000 Kunden) bekommen Ergebnisse in unter 200 ms statt in 3 Sekunden.

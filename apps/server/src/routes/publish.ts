@@ -153,7 +153,7 @@ export async function publishRoutes(api: FastifyInstance) {
           await tx.entry.create({ data: { id: entry.id, ...columns } })
           counts.created++
         } else if (current.contentHash !== entry.contentHash) {
-          await tx.entry.update({ where: { id: entry.id }, data: { ...columns, status: 'awaiting-review' } })
+          await tx.entry.update({ where: { id: entry.id }, data: { ...columns, status: 'open' } })
           await tx.reviewEvent.create({ data: { entryId: entry.id, kind: 'updated' } })
           counts.updated++
         } else if (current.version !== entry.version || current.path !== entry.path || current.removedAt !== null) {

@@ -2,7 +2,7 @@ import type { SessionUser } from '../auth.js'
 import { mediaFileName } from '../media.js'
 import { formatDate, formatTime, t, type MessageKey } from '../i18n.js'
 import { releaseLabel, releasePath } from '../review.js'
-import { Position, StatusPill, TypeBadge } from './components.js'
+import { ChangeRequestBadge, Position, TypeBadge } from './components.js'
 import { Alert, Shell } from './shell.js'
 
 interface MediaRef {
@@ -81,7 +81,7 @@ function MediaBlock({ item }: { item: MediaItem }) {
   )
 }
 
-const EVENT_KINDS = ['updated', 'accepted', 'changes-requested', 'comment']
+const EVENT_KINDS = ['updated', 'accepted', 'changes-requested', 'comment', 'resolved']
 const eventLabel = (kind: string) => (EVENT_KINDS.includes(kind) ? t(`event.${kind}` as MessageKey) : kind)
 
 function History({ events }: { events: EntryView['events'] }) {
@@ -142,15 +142,19 @@ function ReviewForm({ entry, comment, error }: { entry: EntryView; comment: stri
         {comment}
       </textarea>
       <div class="flex flex-wrap gap-2">
-        <button name="action" value="accept" class="rounded-md bg-emerald-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-emerald-700" safe>
-          {t('review.accept')}
-        </button>
-        <button name="action" value="request-changes" class="rounded-md bg-rose-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-rose-700" safe>
-          {t('review.requestChanges')}
-        </button>
-        <button name="action" value="comment" class="rounded-md bg-white px-3 py-1.5 text-sm font-medium text-stone-700 ring-1 ring-stone-300 hover:bg-stone-100" safe>
+        <button name="action" value="comment" class="rounded-md bg-stone-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-stone-700" safe>
           {t('review.commentButton')}
         </button>
+        <button name="action" value="request-changes" class="rounded-md bg-white px-3 py-1.5 text-sm font-medium text-rose-700 ring-1 ring-rose-300 hover:bg-rose-50" safe>
+          {t('review.requestChanges')}
+        </button>
+        {entry.status === 'changes-requested' ? (
+          <button name="action" value="resolve" class="ml-auto rounded-md bg-white px-3 py-1.5 text-sm font-medium text-emerald-700 ring-1 ring-emerald-300 hover:bg-emerald-50" safe>
+            {t('review.resolve')}
+          </button>
+        ) : (
+          ''
+        )}
       </div>
     </form>
   )
@@ -170,7 +174,7 @@ export function EntrySection({ entry, position, safeBodyHtml, tryUrl, comment = 
         <h3 class="min-w-0 grow text-lg font-semibold tracking-tight" safe>
           {entry.title}
         </h3>
-        <StatusPill status={entry.status} />
+        {entry.status === 'changes-requested' ? <ChangeRequestBadge /> : ''}
       </summary>
       <div class="space-y-5 border-t border-stone-100 px-5 pt-4 pb-5">
         <div class="flex flex-wrap items-center gap-2 text-sm text-stone-500">

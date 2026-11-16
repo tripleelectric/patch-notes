@@ -61,17 +61,6 @@ A successful publish SHALL create entries with new ids, update entries whose con
 - **WHEN** a published entry is missing from the next snapshot
 - **THEN** it is marked removed and counted in `removed`
 
-### Requirement: Review status survives publishing
-New entries SHALL start as `awaiting-review`. Publishing SHALL NOT change an entry's review status unless its content (frontmatter fields other than the release, body or media) changed; then the status SHALL return to `awaiting-review` and an `updated` event SHALL be recorded in the entry's review history. Moving an entry to a release SHALL NOT change its status.
-
-#### Scenario: Accepted entry released
-- **WHEN** an accepted entry moves from unreleased to `1.4.0` without other changes
-- **THEN** it stays `accepted`
-
-#### Scenario: Accepted entry edited
-- **WHEN** an accepted entry's body changes
-- **THEN** its status becomes `awaiting-review` and its history shows an `updated` event
-
 ### Requirement: Release dates
 The publish payload SHALL accept `releases`, a list of `{version, date}`. A successful publish SHALL replace all stored release dates with the given ones. A version listed twice or with an invalid date SHALL reject the publish with `400`.
 
@@ -82,3 +71,14 @@ The publish payload SHALL accept `releases`, a list of `{version, date}`. A succ
 #### Scenario: Date removed
 - **WHEN** the next snapshot has no date for `1.0.0`
 - **THEN** the server no longer has a stored date for `1.0.0`
+
+### Requirement: Change requests survive publishing
+New entries SHALL start as `open`. Publishing SHALL NOT change an entry's review status unless its content (frontmatter fields other than the release, body or media) changed; then the status SHALL become `open`, clearing a change request, and an `updated` event SHALL be recorded in the entry's review history. Moving an entry to a release SHALL NOT change its status.
+
+#### Scenario: Change request survives release
+- **WHEN** an entry with changes requested moves from unreleased to `1.4.0` without other changes
+- **THEN** it still has changes requested
+
+#### Scenario: Change request addressed
+- **WHEN** an entry with changes requested is published with a changed body
+- **THEN** its status becomes `open` and its history shows an `updated` event

@@ -123,20 +123,20 @@ describe('publish', () => {
 
     const stored = await server.prisma.entry.findUniqueOrThrow({ where: { id: 'a' } })
     expect(stored.media).toEqual([{ image: { sha256: sha(PNG), contentType: 'image/png' } }])
-    expect(stored.status).toBe('awaiting-review')
+    expect(stored.status).toBe('open')
   })
 
-  it('keeps review status on release and resets it on content change', async () => {
+  it('keeps a change request on release and clears it on content change', async () => {
     const server = await app()
     await publish(server, [entry('a')])
-    await server.prisma.entry.update({ where: { id: 'a' }, data: { status: 'accepted' } })
+    await server.prisma.entry.update({ where: { id: 'a' }, data: { status: 'changes-requested' } })
 
     const released = entry('a', { path: 'v1.4.0/a.md', version: '1.4.0' })
     expect((await publish(server, [released])).json()).toMatchObject({ updated: 1 })
-    expect(await server.prisma.entry.findUniqueOrThrow({ where: { id: 'a' } })).toMatchObject({ status: 'accepted', version: '1.4.0' })
+    expect(await server.prisma.entry.findUniqueOrThrow({ where: { id: 'a' } })).toMatchObject({ status: 'changes-requested', version: '1.4.0' })
 
     expect((await publish(server, [{ ...released, body: 'Changed' }])).json()).toMatchObject({ updated: 1 })
-    expect(await server.prisma.entry.findUniqueOrThrow({ where: { id: 'a' } })).toMatchObject({ status: 'awaiting-review', body: 'Changed' })
+    expect(await server.prisma.entry.findUniqueOrThrow({ where: { id: 'a' } })).toMatchObject({ status: 'open', body: 'Changed' })
     expect(await server.prisma.reviewEvent.findMany({ select: { kind: true } })).toEqual([{ kind: 'updated' }])
   })
 

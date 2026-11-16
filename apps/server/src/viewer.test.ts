@@ -66,19 +66,18 @@ describe('releases', () => {
     expect((await page(app, '/releases/latest', cookie)).statusCode).toBe(404)
   })
 
-  it('shows progress and filters by status', async () => {
-    const { app, cookie } = await setup(['a', 'b', 'c', 'd'].map((id) => entry(id)))
-    await setStatus(app, 'a', 'accepted')
-    await setStatus(app, 'b', 'accepted')
+  it('shows open change requests and filters by them', async () => {
+    const { app, cookie } = await setup(['a', 'b', 'c'].map((id) => entry(id)))
+    expect((await page(app, '/releases/unreleased', cookie)).body).not.toContain('open change request')
     await setStatus(app, 'c', 'changes-requested')
     const body = (await page(app, '/releases/unreleased', cookie)).body
-    expect(body).toContain('2 of 4 accepted')
-    expect(body).toContain('1 changes requested')
-    expect(body).toContain('1 awaiting review')
-    const filtered = (await page(app, '/releases/unreleased?status=awaiting-review', cookie)).body
-    expect(filtered).toContain('Title d')
-    expect(filtered).not.toContain('Title a<')
+    expect(body).toContain('1 open change request')
+    expect(body).not.toContain('accepted')
+    const filtered = (await page(app, '/releases/unreleased?status=changes-requested', cookie)).body
+    expect(filtered).toContain('id="entry-c"')
+    expect(filtered).not.toContain('id="entry-a"')
   })
+
 })
 
 describe('patch page', () => {
@@ -125,12 +124,12 @@ describe('patch page', () => {
 
   it('lists all entries in full with links in the navigation', async () => {
     const { app, cookie } = await setup([entry('a'), entry('b', { type: 'fix' })])
-    await setStatus(app, 'b', 'accepted')
+    await setStatus(app, 'b', 'changes-requested')
     const body = (await page(app, '/releases/unreleased', cookie)).body
     expect(body).toContain('Body of a')
     expect(body).toContain('Body of b')
     expect(body).toContain('href="#entry-a"')
-    expect(body).toMatch(/href="#entry-b"[\s\S]*?Accepted:/)
+    expect(body).toMatch(/href="#entry-b"[\s\S]*?Changes requested/)
   })
 
   it('redirects the permalink to the entry anchor', async () => {
@@ -181,13 +180,15 @@ describe('media delivery', () => {
 })
 
 describe('review', () => {
-  it('accepts as reviewer and records history', async () => {
+  const statusOf = async (app: FastifyInstance, id: string) => (await app.prisma.entry.findUniqueOrThrow({ where: { id } })).status
+
+  it('starts entries open without any accept action', async () => {
     const { app, cookie } = await setup([entry('a')])
-    const reviewer = await addUser(app, cookie, 'pat@example.com', 'reviewer', 'Pat')
-    expect((await post(app, '/entries/a/review', { action: 'accept', body: '' }, reviewer.cookie)).statusCode).toBe(303)
-    expect((await app.prisma.entry.findUniqueOrThrow({ where: { id: 'a' } })).status).toBe('accepted')
-    const body = (await page(app, '/releases/unreleased', reviewer.cookie)).body
-    expect(body).toMatch(/Pat<\/strong>\s*<span>accepted/)
+    expect(await statusOf(app, 'a')).toBe('open')
+    const body = (await page(app, '/releases/unreleased', cookie)).body
+    expect(body).not.toContain('value="accept"')
+    expect(body).not.toContain('value="resolve"')
+    expect((await post(app, '/entries/a/review', { action: 'accept', body: '' }, cookie)).statusCode).toBe(400)
   })
 
   it('requires a comment to request changes', async () => {
@@ -195,13 +196,15 @@ describe('review', () => {
     const response = await post(app, '/entries/a/review', { action: 'request-changes', body: '  ' }, cookie)
     expect(response.statusCode).toBe(400)
     expect(response.body).toContain('Describe which changes you need')
-    expect((await app.prisma.entry.findUniqueOrThrow({ where: { id: 'a' } })).status).toBe('awaiting-review')
+    expect(await statusOf(app, 'a')).toBe('open')
   })
 
-  it('requests changes with a comment, then resets on update', async () => {
+  it('requests changes as reviewer, then clears them on update', async () => {
     const { app, cookie } = await setup([entry('a')])
-    await post(app, '/entries/a/review', { action: 'request-changes', body: 'Export button is hard to find\nsecond line' }, cookie)
-    expect((await app.prisma.entry.findUniqueOrThrow({ where: { id: 'a' } })).status).toBe('changes-requested')
+    const reviewer = await addUser(app, cookie, 'pat@example.com', 'reviewer', 'Pat')
+    await post(app, '/entries/a/review', { action: 'request-changes', body: 'Export button is hard to find\nsecond line' }, reviewer.cookie)
+    expect(await statusOf(app, 'a')).toBe('changes-requested')
+    expect((await page(app, '/releases/unreleased', cookie)).body).toMatch(/Pat<\/strong>\s*<span>requested changes/)
     await app.inject({
       method: 'POST',
       url: '/api/publish',
@@ -211,28 +214,39 @@ describe('review', () => {
     const body = (await page(app, '/releases/unreleased', cookie)).body
     expect(body).toContain('Export button is hard to find\nsecond line')
     expect(body.indexOf('requested changes')).toBeLessThan(body.indexOf('updated the entry'))
-    expect((await app.prisma.entry.findUniqueOrThrow({ where: { id: 'a' } })).status).toBe('awaiting-review')
+    expect(await statusOf(app, 'a')).toBe('open')
+  })
+
+  it('resolves a change request, and ignores resolve otherwise', async () => {
+    const { app, cookie } = await setup([entry('a')])
+    await post(app, '/entries/a/review', { action: 'resolve', body: '' }, cookie)
+    expect(await app.prisma.reviewEvent.count()).toBe(0)
+    await post(app, '/entries/a/review', { action: 'request-changes', body: 'Typo in title' }, cookie)
+    expect((await page(app, '/releases/unreleased', cookie)).body).toContain('value="resolve"')
+    await post(app, '/entries/a/review', { action: 'resolve', body: '' }, cookie)
+    expect(await statusOf(app, 'a')).toBe('open')
+    expect((await page(app, '/releases/unreleased', cookie)).body).toContain('marked the change request as resolved')
   })
 
   it('comments without changing status and escapes the text', async () => {
     const { app, cookie } = await setup([entry('a')])
     await post(app, '/entries/a/review', { action: 'comment', body: '<b>Looks good</b>, waiting for PO' }, cookie)
-    expect((await app.prisma.entry.findUniqueOrThrow({ where: { id: 'a' } })).status).toBe('awaiting-review')
+    expect(await statusOf(app, 'a')).toBe('open')
     expect((await page(app, '/releases/unreleased', cookie)).body).toContain('&lt;b>Looks good&lt;/b>, waiting for PO')
     expect((await post(app, '/entries/a/review', { action: 'comment', body: 'x'.repeat(5001) }, cookie)).statusCode).toBe(400)
   })
 
   it('redirects plain form reviews to the entry anchor', async () => {
     const { app, cookie } = await setup([entry('a')])
-    expect((await post(app, '/entries/a/review', { action: 'accept', body: '' }, cookie)).headers.location).toBe('/releases/unreleased#entry-a')
+    expect((await post(app, '/entries/a/review', { action: 'comment', body: 'Nice' }, cookie)).headers.location).toBe('/releases/unreleased#entry-a')
   })
 
   it('answers htmx reviews with the updated section only', async () => {
     const { app, cookie } = await setup([entry('a')])
-    const response = await post(app, '/entries/a/review', { action: 'accept', body: '' }, cookie, { 'hx-request': 'true' })
+    const response = await post(app, '/entries/a/review', { action: 'comment', body: 'Nice one' }, cookie, { 'hx-request': 'true' })
     expect(response.statusCode).toBe(200)
     expect(response.body).toMatch(/^<details open[^>]*id="entry-a"/)
-    expect(response.body).toContain('Accepted')
+    expect(response.body).toContain('Nice one')
     expect(response.body).not.toContain('<html')
   })
 
@@ -241,6 +255,6 @@ describe('review', () => {
     const response = await post(app, '/entries/a/review', { action: 'request-changes', body: '' }, cookie, { 'hx-request': 'true' })
     expect(response.statusCode).toBe(200)
     expect(response.body).toContain('Describe which changes you need')
-    expect((await app.prisma.entry.findUniqueOrThrow({ where: { id: 'a' } })).status).toBe('awaiting-review')
+    expect(await statusOf(app, 'a')).toBe('open')
   })
 })
