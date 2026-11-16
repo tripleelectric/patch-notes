@@ -1,4 +1,5 @@
 import { ROLES, type SessionUser } from '../auth.js'
+import { formatDate, t } from '../i18n.js'
 import { Alert, buttonClass, inputClass, Shell } from './shell.js'
 
 interface UserRow {
@@ -14,14 +15,14 @@ interface InviteRow {
   expiresAt: Date
 }
 
-const formatDate = (date: Date) => date.toISOString().slice(0, 10)
+const roleLabel = (role: string) => (role === 'admin' ? t('role.admin') : t('role.reviewer'))
 
 function RoleSelect({ value }: { value: string }) {
   return (
-    <select name="role" class="rounded border border-stone-300 bg-white px-2 py-1 text-sm">
+    <select name="role" aria-label={t('users.role')} class="h-9 rounded border border-stone-300 bg-white px-2 text-sm">
       {ROLES.map((role) => (
-        <option value={role} selected={role === value}>
-          {role}
+        <option value={role} selected={role === value} safe>
+          {roleLabel(role)}
         </option>
       ))}
     </select>
@@ -31,21 +32,29 @@ function RoleSelect({ value }: { value: string }) {
 export function AdminUsersPage(props: { user: SessionUser; users: UserRow[]; invites: InviteRow[]; inviteLink?: string; error?: string }) {
   const { user, users, invites, inviteLink, error } = props
   return (
-    <Shell title="Users" user={user}>
-      <h1 class="mb-6 text-2xl font-semibold">Users</h1>
+    <Shell title={t('users.title')} user={user}>
+      <h1 class="mb-6 text-2xl font-semibold" safe>
+        {t('users.title')}
+      </h1>
       {error ? <Alert kind="error" message={error} /> : null}
       {inviteLink ? (
-        <Alert kind="success" message="Invite created. Send this link; it is shown only once and works for 7 days:">
-          <input class={`${inputClass} font-mono`} readonly value={inviteLink} aria-label="Invite link" />
+        <Alert kind="success" message={t('users.inviteCreated')}>
+          <input class={`${inputClass} font-mono`} readonly value={inviteLink} aria-label={t('users.inviteLink')} />
         </Alert>
       ) : null}
 
       <table class="w-full text-left text-sm">
         <thead class="border-b border-stone-200 text-stone-500">
           <tr>
-            <th class="py-2 font-medium">Name</th>
-            <th class="py-2 font-medium">Email</th>
-            <th class="py-2 font-medium">Role</th>
+            <th class="py-2 font-medium" safe>
+              {t('users.name')}
+            </th>
+            <th class="py-2 font-medium" safe>
+              {t('users.email')}
+            </th>
+            <th class="py-2 font-medium" safe>
+              {t('users.role')}
+            </th>
             <th class="py-2" />
           </tr>
         </thead>
@@ -59,16 +68,22 @@ export function AdminUsersPage(props: { user: SessionUser; users: UserRow[]; inv
                 {row.email}
               </td>
               <td class="py-2">
-                <form method="post" action={`/admin/users/${row.id}/role`} class="flex gap-2">
+                <form method="post" action={`/admin/users/${row.id}/role`} class="flex items-center gap-2">
                   <RoleSelect value={row.role ?? 'reviewer'} />
-                  <button class="text-stone-600 underline">Save</button>
+                  <button class="text-stone-600 underline" safe>
+                    {t('users.save')}
+                  </button>
                 </form>
               </td>
               <td class="py-2 text-right">
-                {row.id !== user.id && (
+                {row.id !== user.id ? (
                   <form method="post" action={`/admin/users/${row.id}/remove`}>
-                    <button class="text-red-700 underline">Remove</button>
+                    <button class="text-red-700 underline" safe>
+                      {t('users.remove')}
+                    </button>
                   </form>
+                ) : (
+                  ''
                 )}
               </td>
             </tr>
@@ -76,39 +91,46 @@ export function AdminUsersPage(props: { user: SessionUser; users: UserRow[]; inv
         </tbody>
       </table>
 
-      <h2 class="mt-10 mb-3 text-lg font-semibold">Invite someone</h2>
+      <h2 class="mt-10 mb-3 text-lg font-semibold" safe>
+        {t('users.inviteHeading')}
+      </h2>
       <form method="post" action="/admin/invites" class="flex flex-wrap items-end gap-3">
         <label class="block grow text-sm font-medium">
-          Email
-          <input class={inputClass} type="email" name="email" required />
+          <span safe>{t('users.email')}</span>
+          <input class={`${inputClass} h-9 py-0`} type="email" name="email" required />
         </label>
-        <label class="block text-sm font-medium">
-          Role
-          <div class="mt-1">
-            <RoleSelect value="reviewer" />
-          </div>
-        </label>
-        <button class={buttonClass}>Create invite link</button>
+        <RoleSelect value="reviewer" />
+        <button class={`${buttonClass} h-9 py-0`} safe>
+          {t('users.inviteSubmit')}
+        </button>
       </form>
 
-      {invites.length > 0 && (
+      {invites.length > 0 ? (
         <>
-          <h2 class="mt-10 mb-3 text-lg font-semibold">Pending invites</h2>
+          <h2 class="mt-10 mb-3 text-lg font-semibold" safe>
+            {t('users.pending')}
+          </h2>
           <ul class="divide-y divide-stone-100 text-sm">
             {invites.map((invite) => (
               <li class="flex items-center gap-4 py-2">
                 <span safe>{invite.email}</span>
                 <span class="text-stone-500" safe>
-                  {invite.role}
+                  {roleLabel(invite.role)}
                 </span>
-                <span class="text-stone-500" safe>{`expires ${formatDate(invite.expiresAt)}`}</span>
+                <span class="text-stone-500" safe>
+                  {t('users.expires', { date: formatDate(invite.expiresAt.toISOString().slice(0, 10)) })}
+                </span>
                 <form method="post" action={`/admin/invites/${invite.id}/revoke`} class="ml-auto">
-                  <button class="text-red-700 underline">Revoke</button>
+                  <button class="text-red-700 underline" safe>
+                    {t('users.revoke')}
+                  </button>
                 </form>
               </li>
             ))}
           </ul>
         </>
+      ) : (
+        ''
       )}
     </Shell>
   )

@@ -1,4 +1,5 @@
-export { CONFIG_FILE, configSchema, parseConfig, type Config } from './config.js'
+export { CONFIG_FILE, configSchema, LANGUAGES, parseConfig, type Config, type Language } from './config.js'
+export { parseRelease, RELEASE_FILE, releaseSchema, type ReleaseData } from './release.js'
 export {
   entrySchema,
   httpUrl,

@@ -21,6 +21,7 @@ export async function testConfig(overrides: Partial<Config> = {}): Promise<Confi
     port: 0,
     host: '127.0.0.1',
     baseUrl: BASE_URL,
+    language: 'en',
     adminEmail: ADMIN.email,
     adminPassword: ADMIN.password,
     ...overrides,

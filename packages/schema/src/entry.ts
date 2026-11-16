@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { calendarDate } from './release.js'
 import { isSafeRelativePath, validate, type Result, type ValidationError } from './result.js'
 import { splitFrontmatter } from './yaml.js'
 
@@ -43,7 +44,7 @@ export const entrySchema = z.strictObject({
     .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, 'must be kebab-case (lowercase letters, digits and single dashes)'),
   title: z.string().min(1).max(120),
   type: z.enum(['feature', 'fix', 'change']),
-  date: z.iso.date({ error: 'must be a real calendar date in YYYY-MM-DD format' }),
+  date: calendarDate,
   requests: z.array(httpUrl).optional(),
   try: z.union([httpUrl, z.string().regex(/^\/(?!\/)/)], {
     error: 'must be an absolute http or https URL or a path starting with "/"',

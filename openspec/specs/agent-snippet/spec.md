@@ -38,3 +38,10 @@ The block SHALL explain media references with the supported extensions, and SHAL
 #### Scenario: Broken markers
 - **WHEN** the file contains a start marker without an end marker
 - **THEN** the file is not changed and the command exits with code 1
+
+### Requirement: Content language
+The snippet SHALL tell agents to write titles and bodies in the configured language and SHALL name the body headings in that language.
+
+#### Scenario: German project
+- **WHEN** `patchnotes.yaml` sets `language: de`
+- **THEN** the snippet says to write entries in German and lists `## Was hat sich geändert`

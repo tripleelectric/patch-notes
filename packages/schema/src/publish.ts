@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { entrySchema, httpUrl, type MediaItem } from './entry.js'
+import { calendarDate } from './release.js'
 
 export const MEDIA_TYPES = {
   png: { contentType: 'image/png', kind: 'image' },
@@ -55,8 +56,14 @@ export const publishedEntrySchema = z
     media: z.array(publishedMediaSchema).max(100),
   })
 
+export const publishedReleaseSchema = z.strictObject({
+  version: z.string().regex(/^\d+\.\d+\.\d+$/),
+  date: calendarDate,
+})
+
 export const publishPayloadSchema = z.strictObject({
   appUrl: httpUrl.optional(),
+  releases: z.array(publishedReleaseSchema).max(10_000).default([]),
   entries: z.array(publishedEntrySchema).max(10_000),
 })
 

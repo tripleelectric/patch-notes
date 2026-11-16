@@ -17,6 +17,12 @@ describe('patchnotes new', () => {
     expect(await cli(root, 'check')).toMatchObject({ code: 0, stdout: '1 entry valid' })
   })
 
+  it('scaffolds German headings', async () => {
+    const root = await tmpProject({ 'patchnotes.yaml': 'language: de\n' })
+    const result = await cli(root, 'new', 'CSV-Export', '--type', 'feature')
+    expect(await readFile(join(root, result.stdout), 'utf8')).toContain('## Was hat sich geändert\n\n## Warum\n\n## Entscheidungen\n')
+  })
+
   it('requires --type', async () => {
     const root = await tmpProject()
     expect((await cli(root, 'new', 'Invoice export')).code).toBe(2)

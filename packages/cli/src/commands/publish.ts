@@ -42,7 +42,7 @@ export async function publishCommand(args: string[], io: Io): Promise<number | '
     io.stderr('no token: set the PATCHNOTES_TOKEN environment variable')
     return 1
   }
-  const { entries, errors } = await check(project.value)
+  const { entries, releases, errors } = await check(project.value)
   if (errors.length > 0) {
     printErrors(io, errors)
     return 1
@@ -106,7 +106,7 @@ export async function publishCommand(args: string[], io: Io): Promise<number | '
     const result = (await call('/api/publish', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ entries: payloadEntries, ...(config.appUrl && { appUrl: config.appUrl }) }),
+      body: JSON.stringify({ entries: payloadEntries, releases, ...(config.appUrl && { appUrl: config.appUrl }) }),
     })) as PublishResult
     io.stdout(
       `published to ${server}: ${result.created} created, ${result.updated} updated, ${result.unchanged} unchanged, ` +

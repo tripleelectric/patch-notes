@@ -3,17 +3,18 @@ import { z } from 'zod'
 import { sendHtml } from '../app.js'
 import { createUser, MIN_PASSWORD, type Role } from '../auth.js'
 import { forwardCookies, formBody, toHeaders } from '../http.js'
+import { t, translate } from '../i18n.js'
 import { InvitePage, MessagePage } from '../views/auth.js'
 import { hashToken } from './admin.js'
 import { LOGIN_RATE_LIMIT } from './auth.js'
 
 const acceptSchema = z
   .object({
-    name: z.string().trim().min(1, 'Enter your name.').max(100, 'Name is too long.'),
-    password: z.string().min(MIN_PASSWORD, `Password needs at least ${MIN_PASSWORD} characters.`).max(128, 'Password is too long.'),
+    name: z.string().trim().min(1, 'invite.nameRequired').max(100, 'invite.nameTooLong'),
+    password: z.string().min(MIN_PASSWORD, 'invite.passwordShort').max(128, 'invite.passwordLong'),
     confirm: z.string(),
   })
-  .refine((form) => form.password === form.confirm, 'Passwords do not match.')
+  .refine((form) => form.password === form.confirm, 'invite.mismatch')
 
 export function inviteRoutes(app: FastifyInstance) {
   const { prisma } = app
@@ -22,7 +23,7 @@ export function inviteRoutes(app: FastifyInstance) {
     prisma.invite.findFirst({ where: { tokenHash: hashToken(token), acceptedAt: null, expiresAt: { gt: new Date() } } })
 
   const invalid = (reply: FastifyReply) =>
-    sendHtml(reply, MessagePage({ title: 'Invite invalid', message: 'This invite link is invalid or expired. Ask an admin for a new one.' }), 404)
+    sendHtml(reply, MessagePage({ title: t('invite.invalidTitle'), message: t('invite.invalidMessage') }), 404)
 
   app.get('/invite/:token', async (request, reply) => {
     const { token } = request.params as { token: string }
@@ -39,7 +40,8 @@ export function inviteRoutes(app: FastifyInstance) {
     const form = formBody(request)
     const parsed = acceptSchema.safeParse(form)
     if (!parsed.success) {
-      const error = parsed.error.issues[0]?.message ?? 'Check your input.'
+      const message = parsed.error.issues[0]?.message ?? 'invite.checkInput'
+      const error = message === 'invite.passwordShort' ? t('invite.passwordShort', { min: MIN_PASSWORD }) : translate(message)
       return sendHtml(reply, InvitePage({ email: invite.email, action: `/invite/${token}`, name: form.name ?? '', error }), 400)
     }
 

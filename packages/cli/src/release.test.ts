@@ -26,8 +26,9 @@ describe('patchnotes release', () => {
   it('moves all unreleased entries unchanged', async () => {
     const root = await tmpProject({ ...three, '.patchnotes/unreleased/.gitkeep': '', '.patchnotes/media/x.png': 'x' })
     const result = await cli(root, 'release', '1.4.0')
-    expect(result).toEqual({ code: 0, stdout: 'released 1.4.0: 3 entries moved to .patchnotes/v1.4.0', stderr: '' })
-    expect(await files(root, 'v1.4.0')).toEqual(['a.md', 'b.md', 'c.md'])
+    expect(result).toEqual({ code: 0, stdout: 'released 1.4.0 on 2026-11-14: 3 entries moved to .patchnotes/v1.4.0', stderr: '' })
+    expect(await files(root, 'v1.4.0')).toEqual(['a.md', 'b.md', 'c.md', 'release.yaml'])
+    expect(await readFile(join(root, '.patchnotes/v1.4.0/release.yaml'), 'utf8')).toBe('date: 2026-11-14\n')
     expect(await files(root, 'unreleased')).toEqual(['.gitkeep'])
     expect(await readFile(join(root, '.patchnotes/v1.4.0/a.md'), 'utf8')).toBe(entry('a'))
     expect(await files(root, 'media')).toEqual(['x.png'])
@@ -43,7 +44,7 @@ describe('patchnotes release', () => {
     const released = Object.fromEntries(versions.map((v) => [`.patchnotes/v${v}/r${v.replaceAll('.', '')}.md`, entry(`r${v.replaceAll('.', '')}`)]))
     const root = await tmpProject({ ...released, '.patchnotes/unreleased/a.md': entry('a') })
     expect((await cli(root, 'release', bump)).code).toBe(0)
-    expect(await files(root, `v${expected}`)).toEqual(['a.md'])
+    expect(await files(root, `v${expected}`)).toEqual(['a.md', 'release.yaml'])
   })
 
   it.each([
@@ -56,6 +57,19 @@ describe('patchnotes release', () => {
     const result = await cli(root, 'release', version)
     expect(result.code).toBe(code)
     if (code === 1) expect(result.stderr).toContain(version)
+    expect(await snapshot(root)).toEqual(before)
+  })
+
+  it('records an explicit ship date', async () => {
+    const root = await tmpProject({ '.patchnotes/unreleased/a.md': entry('a') })
+    expect((await cli(root, 'release', 'patch', '--date', '2026-11-01')).code).toBe(0)
+    expect(await readFile(join(root, '.patchnotes/v0.0.1/release.yaml'), 'utf8')).toBe('date: 2026-11-01\n')
+  })
+
+  it.each(['1.11.2026', '2026-02-30'])('rejects --date %s as usage error', async (date) => {
+    const root = await tmpProject({ '.patchnotes/unreleased/a.md': entry('a') })
+    const before = await snapshot(root)
+    expect((await cli(root, 'release', 'patch', '--date', date)).code).toBe(2)
     expect(await snapshot(root)).toEqual(before)
   })
 

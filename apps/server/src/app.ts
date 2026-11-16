@@ -9,6 +9,7 @@ import type { Config } from './config.js'
 import { createPrisma, migrate, MIGRATIONS_DIR } from './db.js'
 import type { PrismaClient } from './generated/prisma/client.js'
 import { isHtmx, toHeaders } from './http.js'
+import { t, withLanguage } from './i18n.js'
 import { adminRoutes } from './routes/admin.js'
 import { authRoutes } from './routes/auth.js'
 import { inviteRoutes } from './routes/invite.js'
@@ -82,6 +83,8 @@ export async function buildApp(config: Config, options: AppOptions = {}) {
   app.decorate('auth', auth)
   app.decorateRequest('user', null)
   app.addHook('onClose', () => prisma.$disconnect())
+  // Everything rendered for a request uses the instance's interface language.
+  app.addHook('onRequest', (_request, _reply, done) => withLanguage(config.language, done))
 
   const bootstrap = await bootstrapAdmin(auth, prisma, config)
   if (bootstrap === 'created') app.log.info(`created admin ${config.adminEmail}`)
@@ -104,7 +107,7 @@ export async function buildApp(config: Config, options: AppOptions = {}) {
     const { id, name, email, role } = session.user
     request.user = { id, name, email, role: role === 'admin' ? 'admin' : 'reviewer' }
     if (path.startsWith('/admin/') && request.user.role !== 'admin') {
-      return sendHtml(reply, MessagePage({ title: 'Not allowed', message: 'Only admins can open this page.' }), 403)
+      return sendHtml(reply, MessagePage({ title: t('forbidden.title'), message: t('forbidden.message') }), 403)
     }
   })
 

@@ -1,7 +1,8 @@
 import type { SessionUser } from '../auth.js'
 import { mediaFileName } from '../media.js'
+import { formatDate, formatTime, t, type MessageKey } from '../i18n.js'
 import { releaseLabel, releasePath } from '../review.js'
-import { StatusPill, TypeBadge } from './components.js'
+import { Position, StatusPill, TypeBadge } from './components.js'
 import { Alert, Shell } from './shell.js'
 
 interface MediaRef {
@@ -35,7 +36,6 @@ export interface EntryExtras {
 
 export const entryAnchor = (id: string) => `entry-${id}`
 const mediaUrl = (ref: MediaRef) => `/media/${mediaFileName(ref.sha256, ref.contentType)}`
-const formatTime = (date: Date) => `${date.toISOString().slice(0, 16).replace('T', ' ')} UTC`
 
 function Image({ media, label }: { media: MediaRef; label: string }) {
   return (
@@ -51,18 +51,22 @@ function MediaBlock({ item }: { item: MediaItem }) {
       {item.before && item.after ? (
         <div class="grid gap-3 sm:grid-cols-2">
           <div>
-            <p class="mb-1.5 text-xs font-semibold uppercase tracking-wider text-stone-500">Before</p>
-            <Image media={item.before} label="Before" />
+            <p class="mb-1.5 text-xs font-semibold uppercase tracking-wider text-stone-500" safe>
+              {t('entry.before')}
+            </p>
+            <Image media={item.before} label={t('entry.before')} />
           </div>
           <div>
-            <p class="mb-1.5 text-xs font-semibold uppercase tracking-wider text-emerald-700">After</p>
-            <Image media={item.after} label="After" />
+            <p class="mb-1.5 text-xs font-semibold uppercase tracking-wider text-emerald-700" safe>
+              {t('entry.after')}
+            </p>
+            <Image media={item.after} label={t('entry.after')} />
           </div>
         </div>
       ) : item.video ? (
         <video controls class="w-full rounded-md bg-black" src={mediaUrl(item.video)} />
       ) : item.image ? (
-        <Image media={item.image} label={item.caption ?? 'Screenshot'} />
+        <Image media={item.image} label={item.caption ?? t('entry.screenshot')} />
       ) : (
         ''
       )}
@@ -77,30 +81,28 @@ function MediaBlock({ item }: { item: MediaItem }) {
   )
 }
 
-const EVENT_LABEL: Record<string, string> = {
-  updated: 'updated the entry',
-  accepted: 'accepted',
-  'changes-requested': 'requested changes',
-  comment: 'commented',
-}
+const EVENT_KINDS = ['updated', 'accepted', 'changes-requested', 'comment']
+const eventLabel = (kind: string) => (EVENT_KINDS.includes(kind) ? t(`event.${kind}` as MessageKey) : kind)
 
 function History({ events }: { events: EntryView['events'] }) {
   return (
     <details class="group/history">
       <summary class="cursor-pointer select-none text-sm font-medium text-stone-600 hover:text-stone-900" safe>
-        {`History (${events.length})`}
+        {t('entry.history', { count: events.length })}
       </summary>
       {events.length === 0 ? (
-        <p class="mt-3 text-sm text-stone-500">No activity yet.</p>
+        <p class="mt-3 text-sm text-stone-500" safe>
+          {t('entry.noActivity')}
+        </p>
       ) : (
         <ol class="mt-3 space-y-3">
           {events.map((event) => (
             <li class="text-sm">
               <p class="text-stone-600">
                 <strong class="font-medium text-stone-900" safe>
-                  {event.user?.name ?? 'publish'}
+                  {event.user?.name ?? t('entry.publisher')}
                 </strong>{' '}
-                <span safe>{EVENT_LABEL[event.kind] ?? event.kind}</span>
+                <span safe>{eventLabel(event.kind)}</span>
                 <time class="ml-1 text-xs text-stone-400" datetime={event.createdAt.toISOString()} safe>
                   {formatTime(event.createdAt)}
                 </time>
@@ -125,29 +127,29 @@ function ReviewForm({ entry, comment, error }: { entry: EntryView; comment: stri
   return (
     <form method="post" action={`/entries/${entry.id}/review`} hx-post={`/entries/${entry.id}/review`} hx-target={target} hx-swap="outerHTML" class="space-y-2">
       {error ? <Alert kind="error" message={error} /> : ''}
-      <label class="sr-only" for={`comment-${entry.id}`}>
-        Comment
+      <label class="sr-only" for={`comment-${entry.id}`} safe>
+        {t('review.comment')}
       </label>
       <textarea
         id={`comment-${entry.id}`}
         name="body"
         rows="2"
         maxlength="5000"
-        placeholder="Comment (required when requesting changes)"
+        placeholder={t('review.placeholder')}
         class="block w-full rounded-md border border-stone-300 bg-white px-3 py-2 text-sm focus:border-stone-500 focus:outline-none"
         safe
       >
         {comment}
       </textarea>
       <div class="flex flex-wrap gap-2">
-        <button name="action" value="accept" class="rounded-md bg-emerald-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-emerald-700">
-          Accept
+        <button name="action" value="accept" class="rounded-md bg-emerald-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-emerald-700" safe>
+          {t('review.accept')}
         </button>
-        <button name="action" value="request-changes" class="rounded-md bg-rose-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-rose-700">
-          Request changes
+        <button name="action" value="request-changes" class="rounded-md bg-rose-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-rose-700" safe>
+          {t('review.requestChanges')}
         </button>
-        <button name="action" value="comment" class="rounded-md bg-white px-3 py-1.5 text-sm font-medium text-stone-700 ring-1 ring-stone-300 hover:bg-stone-100">
-          Comment
+        <button name="action" value="comment" class="rounded-md bg-white px-3 py-1.5 text-sm font-medium text-stone-700 ring-1 ring-stone-300 hover:bg-stone-100" safe>
+          {t('review.commentButton')}
         </button>
       </div>
     </form>
@@ -155,7 +157,7 @@ function ReviewForm({ entry, comment, error }: { entry: EntryView; comment: stri
 }
 
 /** One entry as a collapsible section; also the htmx fragment returned by review actions. */
-export function EntrySection({ entry, safeBodyHtml, tryUrl, comment = '', error }: { entry: EntryView } & EntryExtras) {
+export function EntrySection({ entry, position, safeBodyHtml, tryUrl, comment = '', error }: { entry: EntryView; position?: number } & EntryExtras) {
   const requests = Array.isArray(entry.requests) ? (entry.requests as string[]) : []
   const media = Array.isArray(entry.media) ? (entry.media as MediaItem[]) : []
   return (
@@ -164,6 +166,7 @@ export function EntrySection({ entry, safeBodyHtml, tryUrl, comment = '', error 
         <span class="text-stone-400 transition-transform group-open:rotate-90" aria-hidden="true">
           ▸
         </span>
+        {position === undefined ? '' : <Position value={position} />}
         <h3 class="min-w-0 grow text-lg font-semibold tracking-tight" safe>
           {entry.title}
         </h3>
@@ -172,15 +175,16 @@ export function EntrySection({ entry, safeBodyHtml, tryUrl, comment = '', error 
       <div class="space-y-5 border-t border-stone-100 px-5 pt-4 pb-5">
         <div class="flex flex-wrap items-center gap-2 text-sm text-stone-500">
           <TypeBadge type={entry.type} />
-          <span safe>{entry.date}</span>
+          <span safe>{formatDate(entry.date)}</span>
           {tryUrl ? (
             <a
               href={tryUrl}
               target="_blank"
               rel="noopener noreferrer"
               class="ml-auto rounded-md bg-stone-900 px-3 py-1 text-sm font-medium text-white hover:bg-stone-700"
+              safe
             >
-              Try it ↗
+              {t('entry.try')}
             </a>
           ) : entry.try ? (
             <span class="ml-auto rounded-md bg-stone-100 px-2 py-1 font-mono text-xs text-stone-700" safe>
@@ -195,8 +199,9 @@ export function EntrySection({ entry, safeBodyHtml, tryUrl, comment = '', error 
               target="_blank"
               rel="noopener noreferrer"
               class={`${tryUrl || entry.try || index > 0 ? '' : 'ml-auto '}rounded-md bg-white px-3 py-1 text-sm text-stone-700 ring-1 ring-stone-300 hover:bg-stone-100`}
+              safe
             >
-              {requests.length > 1 ? `Request ${index + 1} ↗` : 'Request ↗'}
+              {requests.length > 1 ? t('entry.requestN', { n: index + 1 }) : t('entry.request')}
             </a>
           ))}
         </div>
@@ -206,7 +211,7 @@ export function EntrySection({ entry, safeBodyHtml, tryUrl, comment = '', error 
         <article class="prose">{safeBodyHtml}</article>
         <div class="space-y-3 rounded-lg bg-stone-50 p-4">
           {entry.removedAt ? (
-            <Alert kind="error" message="This entry was removed from the repository and is no longer part of the patch notes." />
+            <Alert kind="error" message={t('entry.removed')} />
           ) : (
             <ReviewForm entry={entry} comment={comment} error={error} />
           )}
@@ -220,7 +225,7 @@ export function EntrySection({ entry, safeBodyHtml, tryUrl, comment = '', error 
 export function RemovedEntryPage({ user, entry, ...extras }: { user: SessionUser; entry: EntryView } & EntryExtras) {
   return (
     <Shell title={entry.title} user={user}>
-      <nav aria-label="Breadcrumb" class="mb-4 text-sm text-stone-500">
+      <nav aria-label={t('nav.breadcrumb')} class="mb-4 text-sm text-stone-500">
         <a href={releasePath(entry.version)} class="hover:underline" safe>
           {`← ${releaseLabel(entry.version)}`}
         </a>

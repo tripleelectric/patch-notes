@@ -1,19 +1,32 @@
 import { readdir, readFile, realpath, stat } from 'node:fs/promises'
 import { join, posix, relative, sep } from 'node:path'
-import { mediaPaths, mediaTypeProblem, parseEntry, validateEntrySet, type Entry, type ValidationError } from '@patch-notes/schema'
+import {
+  mediaPaths,
+  mediaTypeProblem,
+  parseEntry,
+  parseRelease,
+  RELEASE_FILE,
+  validateEntrySet,
+  type Entry,
+  type ValidationError,
+} from '@patch-notes/schema'
 import type { Project } from './project.js'
 
 export interface CheckResult {
   /** Valid entries; `path` stays relative to the patch notes directory. */
   entries: Entry[]
+  /** Ship dates from valid `v<version>/release.yaml` files. */
+  releases: Array<{ version: string; date: string }>
   /** Errors with paths relative to the project root. */
   errors: ValidationError[]
 }
 
 const toPosix = (path: string) => path.split(sep).join('/')
 
-/** Lists entry files as `/`-separated paths relative to the patch notes dir, or undefined if the dir is missing. */
-export async function scan(dir: string): Promise<string[] | undefined> {
+const isEntryFile = (name: string) => name.endsWith('.md')
+
+/** Lists files (entry files by default) as `/`-separated paths relative to the patch notes dir, outside `media/`; undefined if the dir is missing. */
+export async function scan(dir: string, match: (name: string) => boolean = isEntryFile): Promise<string[] | undefined> {
   let dirents
   try {
     dirents = await readdir(dir, { recursive: true, withFileTypes: true })
@@ -22,7 +35,7 @@ export async function scan(dir: string): Promise<string[] | undefined> {
     throw error
   }
   return dirents
-    .filter((d) => d.isFile() && d.name.endsWith('.md'))
+    .filter((d) => d.isFile() && match(d.name))
     .map((d) => toPosix(relative(dir, join(d.parentPath, d.name))))
     .filter((path) => !path.startsWith('media/'))
     .sort()
@@ -46,6 +59,7 @@ export async function check(project: Project): Promise<CheckResult> {
   if (files === undefined) {
     return {
       entries: [],
+      releases: [],
       errors: [{ file: config.dir, message: 'patch notes directory not found, create a first entry with "patchnotes new"' }],
     }
   }
@@ -55,6 +69,18 @@ export async function check(project: Project): Promise<CheckResult> {
   for (const path of files) {
     const result = parseEntry(await readFile(join(dir, path), 'utf8'), path)
     if (result.ok) entries.push(result.value)
+    else errors.push(...result.errors)
+  }
+
+  const releases: CheckResult['releases'] = []
+  for (const path of (await scan(dir, (name) => name === RELEASE_FILE)) ?? []) {
+    const version = /^v(\d+\.\d+\.\d+)\/release\.yaml$/.exec(path)?.[1]
+    if (version === undefined) {
+      errors.push({ file: path, message: `${RELEASE_FILE} belongs directly in a version directory (vX.Y.Z/)` })
+      continue
+    }
+    const result = parseRelease(await readFile(join(dir, path), 'utf8'), path)
+    if (result.ok) releases.push({ version, date: result.value.date })
     else errors.push(...result.errors)
   }
 
@@ -74,6 +100,7 @@ export async function check(project: Project): Promise<CheckResult> {
   const prefix = (path: string) => posix.join(config.dir, path)
   return {
     entries,
+    releases,
     errors: [
       ...errors.map((error) => ({ ...error, file: prefix(error.file) })),
       ...validateEntrySet(entries.map((entry) => ({ ...entry, path: prefix(entry.path) }))),

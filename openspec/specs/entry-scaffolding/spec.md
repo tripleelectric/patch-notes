@@ -7,7 +7,7 @@ Lets authors and agents create a new, valid patch note entry with one non-intera
 ## Requirements
 
 ### Requirement: Create an entry
-`patchnotes new <title> --type <feature|fix|change>` SHALL create `<dir>/unreleased/<id>.md` with frontmatter `id`, `title`, `type` and `date` set to today's local date, followed by a body with the headings `## What changed`, `## Why` and `## Decisions`. It SHALL print the created path, relative to the project root, to stdout.
+`patchnotes new <title> --type <feature|fix|change>` SHALL create `<dir>/unreleased/<id>.md` with frontmatter `id`, `title`, `type` and `date` set to today's local date, followed by a body with three headings in the configured language: `## What changed`, `## Why`, `## Decisions` for `en`, and `## Was hat sich geändert`, `## Warum`, `## Entscheidungen` for `de`. It SHALL print the created path, relative to the project root, to stdout.
 
 #### Scenario: New feature entry
 - **WHEN** the user runs `patchnotes new "Invoice export as CSV" --type feature` on 2026-11-14
@@ -16,6 +16,10 @@ Lets authors and agents create a new, valid patch note entry with one non-intera
 #### Scenario: Missing directories
 - **WHEN** the patch notes directory or its `unreleased/` directory does not exist
 - **THEN** the command creates them and the entry
+
+#### Scenario: German headings
+- **WHEN** `patchnotes.yaml` sets `language: de`
+- **THEN** the new entry's body has the headings `## Was hat sich geändert`, `## Warum` and `## Entscheidungen`
 
 ### Requirement: Type is required
 The command SHALL NOT pick a default type. A missing or invalid `--type` SHALL be a usage error.

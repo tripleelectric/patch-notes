@@ -123,6 +123,10 @@ export async function publishRoutes(api: FastifyInstance) {
         if (!known.has(file.sha256)) errors.push({ entry: entry.path, message: `media ${file.path} (${file.sha256}) was not uploaded` })
       }
     }
+    const versions = payload.data.releases.map((r) => r.version)
+    for (const version of versions.filter((v, i) => versions.indexOf(v) !== i)) {
+      errors.push({ entry: `v${version}/release.yaml`, message: `release ${version} listed twice` })
+    }
     if (errors.length > 0) return fail(reply, 400, 'publish rejected', errors)
 
     const now = new Date()
@@ -163,6 +167,9 @@ export async function publishRoutes(api: FastifyInstance) {
       const gone = [...existing.values()].filter((e) => !ids.has(e.id) && e.removedAt === null).map((e) => e.id)
       if (gone.length > 0) await tx.entry.updateMany({ where: { id: { in: gone } }, data: { removedAt: now } })
       counts.removed = gone.length
+
+      await tx.release.deleteMany()
+      if (payload.data.releases.length > 0) await tx.release.createMany({ data: payload.data.releases })
 
       const appUrl = payload.data.appUrl
       if (appUrl) await tx.setting.upsert({ where: { key: 'appUrl' }, create: { key: 'appUrl', value: appUrl }, update: { value: appUrl } })

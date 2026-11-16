@@ -2,6 +2,7 @@ import type { FastifyInstance } from 'fastify'
 import { z } from 'zod'
 import { sendHtml } from '../app.js'
 import { forwardCookies, formBody, safeNext, toHeaders } from '../http.js'
+import { t } from '../i18n.js'
 import { LoginPage } from '../views/auth.js'
 
 export const LOGIN_RATE_LIMIT = { max: 10, timeWindow: '1 minute' }
@@ -19,7 +20,7 @@ export function authRoutes(app: FastifyInstance) {
     const { email, password, next } = loginSchema.parse(formBody(request))
     const response = await app.auth.api.signInEmail({ body: { email, password }, headers: toHeaders(request.headers), asResponse: true })
     if (!response.ok) {
-      return sendHtml(reply, LoginPage({ next: safeNext(next), email, error: 'Invalid email or password' }), 401)
+      return sendHtml(reply, LoginPage({ next: safeNext(next), email, error: t('login.invalid') }), 401)
     }
     forwardCookies(response, reply)
     return reply.redirect(safeNext(next), 303)

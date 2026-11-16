@@ -2,6 +2,7 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify'
 import { z } from 'zod'
 import { sendFragment, sendHtml } from '../app.js'
 import { formBody, isHtmx } from '../http.js'
+import { t, translate, type MessageKey } from '../i18n.js'
 import { renderMarkdown } from '../markdown.js'
 import { mediaDir } from '../media.js'
 import { appUrl, releaseEntries, releasePath, releaseSummaries, resolveTry, STATUSES, type Status } from '../review.js'
@@ -11,13 +12,13 @@ import { EmptyPage, ReleasePage } from '../views/release.js'
 
 const reviewSchema = z.object({
   action: z.enum(['accept', 'request-changes', 'comment']),
-  body: z.string().trim().max(5000, 'Comments can have at most 5000 characters.'),
+  body: z.string().trim().max(5000, 'review.tooLong' satisfies MessageKey),
 })
 const EVENT_KIND = { accept: 'accepted', 'request-changes': 'changes-requested', comment: 'comment' } as const
 const MEDIA_FILE = /^[0-9a-f]{64}\.(png|jpg|webp|gif|mp4|webm)$/
 
-const notFound = (reply: FastifyReply, what: string) =>
-  sendHtml(reply, MessagePage({ title: 'Not found', message: `This ${what} does not exist.` }), 404)
+const notFound = (reply: FastifyReply, what: 'release' | 'entry' | 'file') =>
+  sendHtml(reply, MessagePage({ title: t('notFound.title'), message: t(`notFound.${what}`) }), 404)
 
 export function viewerRoutes(app: FastifyInstance) {
   const { prisma, config } = app
@@ -41,8 +42,9 @@ export function viewerRoutes(app: FastifyInstance) {
     const status = (request.query as { status?: string }).status
     const filter = (STATUSES as readonly string[]).includes(status ?? '') ? (status as Status) : undefined
     const base = await appUrl(prisma)
-    const entries = (await releaseEntries(prisma, version)).map((entry) => ({
+    const entries = (await releaseEntries(prisma, version)).map((entry, index) => ({
       ...entry,
+      position: index + 1,
       ...extras(entry, base),
       ...(form?.id === entry.id && { comment: form.comment, error: form.error }),
     }))
@@ -75,13 +77,11 @@ export function viewerRoutes(app: FastifyInstance) {
     const form = formBody(request)
     const parsed = reviewSchema.safeParse(form)
     const error = !parsed.success
-      ? (parsed.error.issues[0]?.message ?? 'Invalid review.')
+      ? translate(parsed.error.issues[0]?.message ?? 'review.invalid')
       : entry.removedAt
-        ? 'Removed entries cannot be reviewed.'
+        ? t('review.removed')
         : parsed.data.action !== 'accept' && parsed.data.body === ''
-          ? parsed.data.action === 'request-changes'
-            ? 'Describe which changes you need.'
-            : 'Write a comment first.'
+          ? t(parsed.data.action === 'request-changes' ? 'review.needChanges' : 'review.needComment')
           : undefined
 
     if (!error && parsed.success) {
@@ -95,7 +95,14 @@ export function viewerRoutes(app: FastifyInstance) {
     if (isHtmx(request)) {
       // htmx swaps only 2xx responses, so validation errors are answered with 200 and shown inside the section.
       const current = (await loadEntry(id))!
-      const section = EntrySection({ entry: current, ...extras(current, await appUrl(prisma)), ...(error && { comment: form.body ?? '', error }) })
+      const ordered = current.removedAt ? [] : await releaseEntries(prisma, current.version)
+      const index = ordered.findIndex((e) => e.id === id)
+      const section = EntrySection({
+        entry: current,
+        ...(index >= 0 && { position: index + 1 }),
+        ...extras(current, await appUrl(prisma)),
+        ...(error && { comment: form.body ?? '', error }),
+      })
       return sendFragment(reply, section)
     }
     if (error) {

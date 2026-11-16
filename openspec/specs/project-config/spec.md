@@ -18,11 +18,11 @@ Project configuration SHALL be read from a YAML file named `patchnotes.yaml` at 
 - **THEN** parsing fails with an error that includes the YAML error message
 
 ### Requirement: Config fields and defaults
-The config SHALL support `dir` (relative path, default `.patchnotes`), `server` (optional absolute `http`/`https` URL of the patch-notes server) and `appUrl` (optional absolute `http`/`https` URL used to resolve path `try` links). An empty file SHALL yield all defaults.
+The config SHALL support `dir` (relative path, default `.patchnotes`), `server` (optional absolute `http`/`https` URL of the patch-notes server), `appUrl` (optional absolute `http`/`https` URL used to resolve path `try` links) and `language` (`en` or `de`, default `en`, the language entries are written in). An empty file SHALL yield all defaults.
 
 #### Scenario: Empty file
 - **WHEN** `patchnotes.yaml` is empty
-- **THEN** parsing returns `dir: .patchnotes` and no `server` or `appUrl`
+- **THEN** parsing returns `dir: .patchnotes`, `language: en` and no `server` or `appUrl`
 
 #### Scenario: Invalid server URL
 - **WHEN** `server` is `patchnotes.example.com`
@@ -31,6 +31,10 @@ The config SHALL support `dir` (relative path, default `.patchnotes`), `server` 
 #### Scenario: Directory escapes project
 - **WHEN** `dir` is `../notes` or an absolute path
 - **THEN** parsing fails with an error naming the field `dir`
+
+#### Scenario: Unsupported language
+- **WHEN** `language` is `fr`
+- **THEN** parsing fails with an error naming the field `language`
 
 ### Requirement: Unknown config fields rejected
 Fields not defined by this spec SHALL be rejected.

@@ -1,13 +1,17 @@
-import { mkdir, readdir, rename, rmdir } from 'node:fs/promises'
+import { mkdir, readdir, rename, rm, rmdir, writeFile } from 'node:fs/promises'
+import { parseRelease, RELEASE_FILE } from '@patch-notes/schema'
 import { join, posix } from 'node:path'
 import { check } from '../check.js'
 import { parse, UsageError, type Io } from '../io.js'
 import { loadProject, printErrors } from '../project.js'
 import { BUMPS, nextVersion, VERSION } from '../version.js'
+import { localDate } from '../date.js'
 
 export async function releaseCommand(args: string[], io: Io): Promise<number | 'help'> {
-  const { values, positionals } = parse(args, {})
+  const { values, positionals } = parse(args, { date: { type: 'string' } })
   if (values.help) return 'help'
+  const date = values.date ?? localDate(io.now())
+  if (!parseRelease(`date: ${JSON.stringify(date)}`, RELEASE_FILE).ok) throw new UsageError(`invalid --date "${date}", expected YYYY-MM-DD`)
   const [arg, ...extra] = positionals
   if (arg === undefined || extra.length > 0 || !((BUMPS as readonly string[]).includes(arg) || VERSION.test(arg))) {
     throw new UsageError('expected one version: patchnotes release <patch|minor|major|X.Y.Z>')
@@ -50,6 +54,7 @@ export async function releaseCommand(args: string[], io: Io): Promise<number | '
 
   const moved: string[] = []
   try {
+    await writeFile(join(target, RELEASE_FILE), `date: ${date}\n`, { flag: 'wx' })
     for (const name of unreleased) {
       await rename(join(source, name), join(target, name))
       moved.push(name)
@@ -58,6 +63,7 @@ export async function releaseCommand(args: string[], io: Io): Promise<number | '
     const reason = error instanceof Error ? error.message : String(error)
     try {
       for (const name of moved.toReversed()) await rename(join(target, name), join(source, name))
+      await rm(join(target, RELEASE_FILE), { force: true })
       await rmdir(target)
     } catch (rollbackError) {
       io.stderr(`release failed: ${reason}`)
@@ -68,6 +74,6 @@ export async function releaseCommand(args: string[], io: Io): Promise<number | '
     return 1
   }
 
-  io.stdout(`released ${version.value}: ${moved.length} ${moved.length === 1 ? 'entry' : 'entries'} moved to ${shownTarget}`)
+  io.stdout(`released ${version.value} on ${date}: ${moved.length} ${moved.length === 1 ? 'entry' : 'entries'} moved to ${shownTarget}`)
   return 0
 }

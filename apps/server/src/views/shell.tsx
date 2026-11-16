@@ -1,5 +1,6 @@
 import type { PropsWithChildren } from '@kitajs/html'
 import type { SessionUser } from '../auth.js'
+import { t } from '../i18n.js'
 import { Layout } from './layout.js'
 
 export function Shell({ title, user, sidebar, children }: PropsWithChildren<{ title: string; user: SessionUser; sidebar?: JSX.Element }>) {
@@ -10,12 +11,12 @@ export function Shell({ title, user, sidebar, children }: PropsWithChildren<{ ti
           <a href="/" class="font-semibold tracking-tight">
             patch-notes
           </a>
-          <a href="/" class="text-stone-600 hover:text-stone-900">
-            Releases
+          <a href="/" class="text-stone-600 hover:text-stone-900" safe>
+            {t('nav.patches')}
           </a>
           {user.role === 'admin' ? (
-            <a href="/admin/users" class="text-stone-600 hover:text-stone-900">
-              Users
+            <a href="/admin/users" class="text-stone-600 hover:text-stone-900" safe>
+              {t('nav.users')}
             </a>
           ) : (
             ''
@@ -24,7 +25,9 @@ export function Shell({ title, user, sidebar, children }: PropsWithChildren<{ ti
             {user.name}
           </span>
           <form method="post" action="/logout" class="ml-auto sm:ml-0">
-            <button class="text-stone-600 hover:text-stone-900">Log out</button>
+            <button class="text-stone-600 hover:text-stone-900" safe>
+              {t('nav.logout')}
+            </button>
           </form>
         </nav>
       </header>

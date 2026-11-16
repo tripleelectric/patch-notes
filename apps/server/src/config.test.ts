@@ -15,7 +15,7 @@ it('names every invalid variable', () => {
 it('applies defaults', () => {
   expect(loadConfig({ BASE_URL: 'https://notes.example.com/' })).toEqual({
     ok: true,
-    value: { dataDir: resolve('./data'), port: 3000, host: '0.0.0.0', baseUrl: 'https://notes.example.com' },
+    value: { dataDir: resolve('./data'), port: 3000, host: '0.0.0.0', baseUrl: 'https://notes.example.com', language: 'en' },
   })
 })
 
@@ -27,4 +27,10 @@ it('rejects a short AUTH_SECRET', () => {
 it('rejects a short PUBLISH_TOKEN', () => {
   const result = loadConfig({ BASE_URL: 'https://x.example.com', PUBLISH_TOKEN: 'short' })
   expect(!result.ok && result.errors[0]).toMatch(/^PUBLISH_TOKEN: /)
+})
+
+it('accepts German and rejects unsupported languages', () => {
+  expect(loadConfig({ BASE_URL: 'https://x.example.com', LANGUAGE: 'de' })).toMatchObject({ ok: true, value: { language: 'de' } })
+  const result = loadConfig({ BASE_URL: 'https://x.example.com', LANGUAGE: 'fr' })
+  expect(!result.ok && result.errors[0]).toMatch(/^LANGUAGE: /)
 })

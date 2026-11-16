@@ -11,7 +11,7 @@ describe('parseConfig', () => {
   it('returns typed config', () => {
     expect(parseConfig('server: https://patchnotes.example.com\ndir: notes\nappUrl: https://app.example.com\n')).toEqual({
       ok: true,
-      value: { server: 'https://patchnotes.example.com', dir: 'notes', appUrl: 'https://app.example.com' },
+      value: { server: 'https://patchnotes.example.com', dir: 'notes', appUrl: 'https://app.example.com', language: 'en' },
     })
   })
 
@@ -21,7 +21,7 @@ describe('parseConfig', () => {
   })
 
   it.each(['', '# only a comment\n'])('yields defaults for empty file %j', (content) => {
-    expect(parseConfig(content)).toEqual({ ok: true, value: { dir: '.patchnotes' } })
+    expect(parseConfig(content)).toEqual({ ok: true, value: { dir: '.patchnotes', language: 'en' } })
   })
 
   it('names an invalid server URL', () => {
@@ -46,6 +46,11 @@ describe('parseConfig', () => {
     expect(!result.ok && result.errors).toEqual([
       { file: 'patchnotes.yaml', field: 'token', message: expect.stringContaining('PATCHNOTES_TOKEN') },
     ])
+  })
+
+  it('accepts German and rejects unsupported languages', () => {
+    expect(parseConfig('language: de').ok && parseConfig('language: de')).toMatchObject({ value: { language: 'de' } })
+    expect(fields('language: fr')).toEqual(['language'])
   })
 
   it('rejects a non-object document', () => {

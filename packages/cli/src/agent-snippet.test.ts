@@ -15,6 +15,14 @@ describe('patchnotes agent-snippet', () => {
     }
   })
 
+  it('names the content language', async () => {
+    const english = await cli(await tmpProject(), 'agent-snippet')
+    expect(english.stdout).toContain('in English')
+    const german = await cli(await tmpProject({ 'patchnotes.yaml': 'language: de\n' }), 'agent-snippet')
+    expect(german.stdout).toContain('in German')
+    expect(german.stdout).toContain('## Was hat sich geändert')
+  })
+
   it('uses the configured directory', async () => {
     const result = await cli(await tmpProject({ 'patchnotes.yaml': 'dir: docs/notes\n' }), 'agent-snippet')
     expect(result.stdout).toContain('docs/notes/media/')

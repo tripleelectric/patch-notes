@@ -1,13 +1,17 @@
 import { readFile, writeFile } from 'node:fs/promises'
 import { resolve } from 'node:path'
-import { entrySchema, MEDIA_TYPES } from '@patch-notes/schema'
+import { entrySchema, MEDIA_TYPES, type Language } from '@patch-notes/schema'
+import { HEADINGS } from '../headings.js'
 import { parse, UsageError, type Io } from '../io.js'
 import { loadProject, printErrors } from '../project.js'
 
 export const START = '<!-- patchnotes:start -->'
 export const END = '<!-- patchnotes:end -->'
 
-export function snippet(dir: string): string {
+const LANGUAGE_NAME: Record<Language, string> = { en: 'English', de: 'German' }
+
+export function snippet(dir: string, language: Language = 'en'): string {
+  const [changed, why, decisions] = HEADINGS[language]
   const types = entrySchema.shape.type.options.join('|')
   const images = Object.entries(MEDIA_TYPES).filter(([, t]) => t.kind === 'image').map(([ext]) => `.${ext}`).join(', ')
   const videos = Object.entries(MEDIA_TYPES).filter(([, t]) => t.kind === 'video').map(([ext]) => `.${ext}`).join(', ')
@@ -18,10 +22,11 @@ Every user-visible change (feature, fix or changed behavior) gets a patch note e
 
 1. \`patchnotes new "<title>" --type <${types}> [--request <ticket-url>]... [--try </path/in/app>]\`
    It creates \`${dir}/unreleased/<id>.md\` and prints the path. The title is plain language a PM understands.
+   Write the title and body in ${LANGUAGE_NAME[language]}.
 2. Fill in the body sections:
-   - \`## What changed\`: short and non-technical, from the user's point of view.
-   - \`## Why\`: the problem or request behind it.
-   - \`## Decisions\`: bullet list of trade-offs and what was left out on purpose.
+   - \`## ${changed}\`: short and non-technical, from the user's point of view.
+   - \`## ${why}\`: the problem or request behind it.
+   - \`## ${decisions}\`: bullet list of trade-offs and what was left out on purpose.
 3. Screenshots help reviewers: save them in \`${dir}/media/\` and list them in the frontmatter, paths relative to \`${dir}/\`:
    \`\`\`yaml
    media:
@@ -48,7 +53,7 @@ export async function agentSnippetCommand(args: string[], io: Io): Promise<numbe
     printErrors(io, project.errors)
     return 1
   }
-  const block = snippet(project.value.config.dir)
+  const block = snippet(project.value.config.dir, project.value.config.language)
   if (values.write === undefined) {
     io.stdout(block)
     return 0

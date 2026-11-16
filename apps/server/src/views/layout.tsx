@@ -1,10 +1,11 @@
 import type { PropsWithChildren } from '@kitajs/html'
+import { currentLanguage } from '../i18n.js'
 
 const HTMX_CONFIG = JSON.stringify({ includeIndicatorStyles: false, allowEval: false, allowScriptTags: false })
 
 export function Layout({ title, children }: PropsWithChildren<{ title: string }>) {
   return (
-    <html lang="en">
+    <html lang={currentLanguage()}>
       <head>
         <meta charset="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />

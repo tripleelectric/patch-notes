@@ -6,12 +6,10 @@ import { scan } from '../check.js'
 import { parse, UsageError, type Io } from '../io.js'
 import { loadProject, printErrors } from '../project.js'
 import { slugify } from '../slug.js'
+import { localDate } from '../date.js'
+import { HEADINGS } from '../headings.js'
 
 const TYPES: readonly string[] = entrySchema.shape.type.options
-const BODY = '## What changed\n\n## Why\n\n## Decisions\n'
-
-const localDate = (date: Date) =>
-  [date.getFullYear(), date.getMonth() + 1, date.getDate()].map((n) => String(n).padStart(2, '0')).join('-')
 
 export async function newCommand(args: string[], io: Io): Promise<number | 'help'> {
   const { values, positionals } = parse(args, {
@@ -51,7 +49,7 @@ export async function newCommand(args: string[], io: Io): Promise<number | 'help
     ...(values.request && { requests: values.request }),
     ...(values.try !== undefined && { try: values.try }),
   }
-  const content = `---\n${stringify(data)}---\n\n${BODY}`
+  const content = `---\n${stringify(data)}---\n\n${HEADINGS[config.language].map((h) => `## ${h}\n`).join('\n')}`
   const parsed = parseEntry(content, relPath)
   if (!parsed.ok) {
     printErrors(io, parsed.errors.map((error) => ({ ...error, file: shown })))

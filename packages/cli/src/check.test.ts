@@ -108,6 +108,23 @@ describe('patchnotes check', () => {
     expect(result.stderr).toMatch(new RegExp(`^\\.patchnotes/unreleased/a\\.md: media\\.0\\.image: .*${message}`))
   })
 
+  it('validates release files', async () => {
+    const root = await tmpProject({
+      '.patchnotes/v1.0.0/a.md': entry('a'),
+      '.patchnotes/v1.0.0/release.yaml': 'date: tomorrow\n',
+      '.patchnotes/unreleased/release.yaml': 'date: 2026-11-14\n',
+    })
+    const result = await cli(root, 'check')
+    expect(result.code).toBe(1)
+    expect(result.stderr).toContain('.patchnotes/v1.0.0/release.yaml: date: ')
+    expect(result.stderr).toContain('.patchnotes/unreleased/release.yaml: release.yaml belongs directly in a version directory')
+  })
+
+  it('accepts a valid release file', async () => {
+    const root = await tmpProject({ '.patchnotes/v1.0.0/a.md': entry('a'), '.patchnotes/v1.0.0/release.yaml': 'date: 2026-10-15\n' })
+    expect((await cli(root, 'check')).code).toBe(0)
+  })
+
   it('changes no file', async () => {
     const root = await tmpProject({
       '.patchnotes/unreleased/a.md': entry('a', media('media/a.png')),

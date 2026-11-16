@@ -4,6 +4,8 @@ import { isSafeRelativePath, validate, type Result } from './result.js'
 import { parseYaml } from './yaml.js'
 
 export const CONFIG_FILE = 'patchnotes.yaml'
+export const LANGUAGES = ['en', 'de'] as const
+export type Language = (typeof LANGUAGES)[number]
 
 export const configSchema = z.strictObject({
   dir: z
@@ -13,6 +15,7 @@ export const configSchema = z.strictObject({
     .default('.patchnotes'),
   server: httpUrl.optional(),
   appUrl: httpUrl.optional(),
+  language: z.enum(LANGUAGES).default('en'),
 })
 
 export type Config = z.output<typeof configSchema>

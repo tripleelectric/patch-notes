@@ -140,3 +140,9 @@ model Setting {
   key   String @id
   value String
 }
+
+/// Ship date of a released version, from `v<version>/release.yaml`.
+model Release {
+  version String @id
+  date    String
+}

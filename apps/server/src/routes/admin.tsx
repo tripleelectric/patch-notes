@@ -4,6 +4,7 @@ import { z } from 'zod'
 import { sendHtml } from '../app.js'
 import { ROLES } from '../auth.js'
 import { formBody } from '../http.js'
+import { t } from '../i18n.js'
 import { AdminUsersPage } from '../views/admin-users.js'
 
 export const INVITE_DAYS = 7
@@ -27,10 +28,10 @@ export function adminRoutes(app: FastifyInstance) {
 
   app.post('/admin/invites', async (request, reply) => {
     const parsed = inviteSchema.safeParse(formBody(request))
-    if (!parsed.success) return render(request, reply, { error: 'Enter a valid email and role.' })
+    if (!parsed.success) return render(request, reply, { error: t('users.invalidInvite') })
     const { email, role } = parsed.data
     if (await prisma.user.findUnique({ where: { email } })) {
-      return render(request, reply, { error: `A user with ${email} already exists.` })
+      return render(request, reply, { error: t('users.exists', { email }) })
     }
     const token = randomBytes(32).toString('base64url')
     await prisma.$transaction([
@@ -55,13 +56,13 @@ export function adminRoutes(app: FastifyInstance) {
 
   app.post('/admin/users/:id/role', async (request, reply) => {
     const parsed = roleSchema.safeParse(formBody(request))
-    if (!parsed.success) return render(request, reply, { error: 'Unknown role.' })
+    if (!parsed.success) return render(request, reply, { error: t('users.unknownRole') })
     const { id } = request.params as { id: string }
     const error = await prisma.$transaction(async (tx) => {
       const target = await tx.user.findUnique({ where: { id } })
-      if (!target) return 'User not found.'
+      if (!target) return t('users.notFound')
       if (target.role === 'admin' && parsed.data.role !== 'admin' && (await tx.user.count({ where: { role: 'admin' } })) <= 1) {
-        return 'The last admin cannot be demoted.'
+        return t('users.lastAdminDemote')
       }
       await tx.user.update({ where: { id }, data: { role: parsed.data.role } })
       return undefined
@@ -71,11 +72,11 @@ export function adminRoutes(app: FastifyInstance) {
 
   app.post('/admin/users/:id/remove', async (request, reply) => {
     const { id } = request.params as { id: string }
-    if (id === request.user!.id) return render(request, reply, { error: 'You cannot remove yourself.' })
+    if (id === request.user!.id) return render(request, reply, { error: t('users.removeSelf') })
     const error = await prisma.$transaction(async (tx) => {
       const target = await tx.user.findUnique({ where: { id } })
-      if (!target) return 'User not found.'
-      if (target.role === 'admin' && (await tx.user.count({ where: { role: 'admin' } })) <= 1) return 'The last admin cannot be removed.'
+      if (!target) return t('users.notFound')
+      if (target.role === 'admin' && (await tx.user.count({ where: { role: 'admin' } })) <= 1) return t('users.lastAdminRemove')
       await tx.user.delete({ where: { id } })
       return undefined
     })

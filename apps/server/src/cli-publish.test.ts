@@ -34,6 +34,7 @@ async function listening() {
 const twoEntries = {
   '.patchnotes/unreleased/a.md': entry('a', 'media:\n  - image: media/a.png\n'),
   '.patchnotes/v1.0.0/b.md': entry('b', 'try: /b\n'),
+  '.patchnotes/v1.0.0/release.yaml': 'date: 2026-10-15\n',
   '.patchnotes/media/a.png': PNG,
 }
 
@@ -50,6 +51,7 @@ describe('patchnotes publish', () => {
     })
     expect(await app.prisma.entry.findUniqueOrThrow({ where: { id: 'b' } })).toMatchObject({ version: '1.0.0', try: '/b' })
     expect((await app.prisma.setting.findUniqueOrThrow({ where: { key: 'appUrl' } })).value).toBe('https://app.example.com')
+    expect(await app.prisma.release.findMany()).toEqual([{ version: '1.0.0', date: '2026-10-15' }])
 
     expect((await publish(root)).stdout).toContain('0 created, 0 updated, 2 unchanged, 0 removed; 0 media files uploaded')
   })
