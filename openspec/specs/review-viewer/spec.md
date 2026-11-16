@@ -18,22 +18,30 @@ Shows reviewers what shipped, release by release and entry by entry, with everyt
 - **THEN** `/` shows a hint to run `patchnotes publish`
 
 ### Requirement: Release page
-`/releases/unreleased` and `/releases/<X.Y.Z>` SHALL list the release's entries that are not removed, grouped by type in the order features, fixes, changes, each with title, date, review status and comment count. A release without entries SHALL return `404`.
+`/releases/unreleased` and `/releases/<X.Y.Z>` SHALL show all the release's entries that are not removed on one page, grouped by type in the order features, fixes, changes. Each entry SHALL be a collapsible section, expanded by default, with the anchor `entry-<id>`, showing title, type, date, review status, links, media, rendered body, review form and history. A release without entries SHALL return `404`.
 
 #### Scenario: Grouped entries
 - **WHEN** a release has a fix and a feature
 - **THEN** the feature group is listed before the fix group
+
+#### Scenario: Full entries on one page
+- **WHEN** a user opens a release with two entries that have bodies and media
+- **THEN** both bodies and all media are on the release page inside collapsible sections
 
 #### Scenario: Unknown release
 - **WHEN** a user opens `/releases/9.9.9` with no such entries
 - **THEN** the response is `404`
 
 ### Requirement: Release navigation
-Every release and entry page SHALL show all releases with entries, Unreleased first, then versions from highest to lowest, each with its entry count.
+Every release page SHALL show all releases with entries, Unreleased first, then versions from highest to lowest, each with its entry count. Under the current release it SHALL list that release's entries as links to their anchors, each with its review status.
 
 #### Scenario: Version ordering
 - **WHEN** versions `1.2.0`, `1.10.0` and `1.9.1` exist
 - **THEN** the release navigation lists them as `1.10.0`, `1.9.1`, `1.2.0`
+
+#### Scenario: Entry links
+- **WHEN** a user opens a release containing entry `invoice-export`
+- **THEN** the navigation links to `#entry-invoice-export` and shows that entry's status
 
 ### Requirement: Review progress
 Each release page SHALL show how many of its entries are accepted, have changes requested and await review.
@@ -48,17 +56,6 @@ A release page SHALL accept `?status=awaiting-review|accepted|changes-requested`
 #### Scenario: Only awaiting
 - **WHEN** a user opens `/releases/unreleased?status=awaiting-review`
 - **THEN** only entries awaiting review are listed
-
-### Requirement: Entry page
-`/entries/<id>` SHALL show the entry's title, type, date, release, review status, its body rendered from markdown, links to all request URLs, and media: images, before and after images side by side with labels, and videos with controls. Removed entries SHALL show a notice that they were removed from the repository.
-
-#### Scenario: Before and after
-- **WHEN** an entry has a before/after media item
-- **THEN** the page shows both images labelled "Before" and "After"
-
-#### Scenario: Removed entry
-- **WHEN** an entry was removed by the last publish
-- **THEN** its page shows a removed notice and no review actions
 
 ### Requirement: Try link
 When an entry has `try`, the page SHALL show a "Try it" link: the URL itself when absolute, or the path appended to the published `appUrl`. Without an `appUrl` a path SHALL be shown as text, not as a link.
@@ -84,3 +81,18 @@ Entry bodies SHALL be rendered from markdown without passing through raw HTML, a
 #### Scenario: Video range
 - **WHEN** a logged-in user requests a video with `Range: bytes=0-9`
 - **THEN** the response is `206` with 10 bytes
+
+### Requirement: Entry permalink
+`/entries/<id>` SHALL redirect to `/releases/<release>#entry-<id>` for entries that are not removed. For removed entries it SHALL show the entry with a notice that it was removed from the repository and without review actions. Unknown ids SHALL return `404`.
+
+#### Scenario: Permalink
+- **WHEN** a user opens `/entries/invoice-export` of an unreleased entry
+- **THEN** the response redirects to `/releases/unreleased#entry-invoice-export`
+
+#### Scenario: Removed entry
+- **WHEN** an entry was removed by the last publish
+- **THEN** `/entries/<id>` shows a removed notice and no review actions
+
+#### Scenario: Before and after
+- **WHEN** an entry has a before/after media item
+- **THEN** its section shows both images labelled "Before" and "After"

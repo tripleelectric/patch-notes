@@ -63,6 +63,11 @@ export async function sendHtml(reply: FastifyReply, html: JSX.Element, status = 
   return reply.status(status).type('text/html; charset=utf-8').send(`<!doctype html>${await html}`)
 }
 
+/** Partial HTML for htmx swaps, without a doctype. */
+export async function sendFragment(reply: FastifyReply, html: JSX.Element) {
+  return reply.type('text/html; charset=utf-8').send(await html)
+}
+
 export async function buildApp(config: Config, options: AppOptions = {}) {
   mkdirSync(config.dataDir, { recursive: true })
   const dbPath = join(config.dataDir, 'patchnotes.db')

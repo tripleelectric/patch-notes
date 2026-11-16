@@ -13,7 +13,7 @@ ADMIN_PASSWORD=demo-admin-password
 docker build -q -t patch-notes:demo . >/dev/null
 docker rm -f patch-notes-demo >/dev/null 2>&1 || true
 docker volume rm patch-notes-demo-data >/dev/null 2>&1 || true
-docker run -d --name patch-notes-demo -p "$PORT:3000" -v patch-notes-demo-data:/data \
+docker run -d --restart unless-stopped --name patch-notes-demo -p "$PORT:3000" -v patch-notes-demo-data:/data \
   -e BASE_URL="$URL" -e ADMIN_EMAIL="$ADMIN_EMAIL" -e ADMIN_PASSWORD="$ADMIN_PASSWORD" -e PUBLISH_TOKEN="$TOKEN" \
   patch-notes:demo >/dev/null
 

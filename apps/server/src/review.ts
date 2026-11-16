@@ -55,22 +55,18 @@ export function compareEntries(a: Sortable, b: Sortable): number {
 export async function releaseEntries(prisma: PrismaClient, version: string | null) {
   const entries = await prisma.entry.findMany({
     where: { version, removedAt: null },
-    select: {
-      id: true,
-      title: true,
-      type: true,
-      date: true,
-      status: true,
-      media: true,
-      _count: { select: { events: { where: { body: { not: null } } } } },
-    },
+    include: { events: { orderBy: { createdAt: 'asc' }, include: { user: { select: { name: true } } } } },
   })
   return entries.sort(compareEntries)
 }
 
-/** Next entry awaiting review after `currentId` in release order, wrapping around. */
-export function nextAwaiting<T extends { id: string; status: string }>(ordered: T[], currentId: string): T | undefined {
-  const index = ordered.findIndex((e) => e.id === currentId)
-  const rotated = [...ordered.slice(index + 1), ...ordered.slice(0, Math.max(index, 0))]
-  return rotated.find((e) => e.id !== currentId && e.status === 'awaiting-review')
+export async function appUrl(prisma: PrismaClient): Promise<string | undefined> {
+  return (await prisma.setting.findUnique({ where: { key: 'appUrl' } }))?.value
+}
+
+/** Absolute try URL: kept when absolute, appended to appUrl when a path, undefined when not resolvable. */
+export function resolveTry(tryLink: string | null, base: string | undefined): string | undefined {
+  if (!tryLink) return undefined
+  if (/^https?:/.test(tryLink)) return tryLink
+  return base ? base.replace(/\/+$/, '') + tryLink : undefined
 }

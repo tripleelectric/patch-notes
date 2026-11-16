@@ -1,50 +1,12 @@
 import type { SessionUser } from '../auth.js'
 import { releaseLabel, releasePath, STATUSES, TYPES, type ReleaseSummary, type Status } from '../review.js'
-import { Progress, ReleaseNav, StatusPill, statusLabel, typePlural } from './components.js'
+import { Progress, ReleaseNav, statusLabel, typePlural } from './components.js'
+import { EntrySection, type EntryExtras, type EntryView } from './entry.js'
 import { Shell } from './shell.js'
 
-export interface ListEntry {
-  id: string
-  title: string
-  type: string
-  date: string
-  status: string
-  media: unknown
-  _count: { events: number }
-}
+export type SectionEntry = EntryView & EntryExtras
 
-function EntryRow({ entry }: { entry: ListEntry }) {
-  const media = Array.isArray(entry.media) ? entry.media.length : 0
-  const comments = entry._count.events
-  return (
-    <li>
-      <a
-        href={`/entries/${entry.id}`}
-        class="group flex items-center gap-4 rounded-lg border border-stone-200 bg-white px-4 py-3 shadow-sm transition hover:border-stone-300 hover:shadow"
-      >
-        <div class="min-w-0 grow">
-          <p class="truncate font-medium text-stone-900 group-hover:underline" safe>
-            {entry.title}
-          </p>
-          <p class="mt-0.5 text-xs text-stone-500" safe>
-            {[entry.date, comments > 0 && `${comments} ${comments === 1 ? 'comment' : 'comments'}`, media > 0 && `${media} media`]
-              .filter(Boolean)
-              .join(' · ')}
-          </p>
-        </div>
-        <StatusPill status={entry.status} />
-      </a>
-    </li>
-  )
-}
-
-export function ReleasePage(props: {
-  user: SessionUser
-  releases: ReleaseSummary[]
-  summary: ReleaseSummary
-  entries: ListEntry[]
-  filter: Status | undefined
-}) {
+export function ReleasePage(props: { user: SessionUser; releases: ReleaseSummary[]; summary: ReleaseSummary; entries: SectionEntry[]; filter: Status | undefined }) {
   const { user, releases, summary, entries, filter } = props
   const base = releasePath(summary.version)
   const visible = filter ? entries.filter((e) => e.status === filter) : entries
@@ -52,9 +14,16 @@ export function ReleasePage(props: {
     [undefined, 'All', summary.total],
     ...STATUSES.map((s): [Status, string, number] => [s, statusLabel(s), summary.counts[s]]),
   ]
+  const sidebar = (
+    <div class="lg:sticky lg:top-6 lg:max-h-[calc(100vh-3rem)] lg:overflow-y-auto">
+      <ReleaseNav releases={releases} current={summary.version} entries={visible} />
+    </div>
+  )
   return (
-    <Shell title={releaseLabel(summary.version)} user={user} sidebar={<ReleaseNav releases={releases} current={summary.version} />}>
-      <h1 class="text-3xl font-semibold tracking-tight" safe>{releaseLabel(summary.version)}</h1>
+    <Shell title={releaseLabel(summary.version)} user={user} sidebar={sidebar}>
+      <h1 class="text-4xl font-bold tracking-tight" safe>
+        {summary.version === null ? 'Unreleased' : `Patch ${summary.version}`}
+      </h1>
       <p class="mt-1 text-sm text-stone-500" safe>
         {`${summary.version === null ? 'Shipped, not yet in a release' : 'Released'} · ${summary.total} ${summary.total === 1 ? 'entry' : 'entries'}`}
       </p>
@@ -84,16 +53,16 @@ export function ReleasePage(props: {
           const group = visible.filter((e) => e.type === type)
           if (group.length === 0) return ''
           return (
-            <section class="mt-8">
-              <h2 class="mb-3 flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-stone-500">
+            <section class="mt-10">
+              <h2 class="mb-4 flex items-baseline gap-2 border-b-2 border-stone-900 pb-2 text-xl font-bold uppercase tracking-wide">
                 <span safe>{typePlural(type)}</span>
-                <span class="font-normal text-stone-400" safe>{String(group.length)}</span>
+                <span class="text-sm font-normal text-stone-400" safe>{String(group.length)}</span>
               </h2>
-              <ul class="space-y-2">
+              <div class="space-y-4">
                 {group.map((entry) => (
-                  <EntryRow entry={entry} />
+                  <EntrySection {...entry} entry={entry} />
                 ))}
-              </ul>
+              </div>
             </section>
           )
         })

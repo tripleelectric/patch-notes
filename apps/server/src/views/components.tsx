@@ -32,11 +32,19 @@ export function TypeBadge({ type }: { type: string }) {
   return <span class={`rounded px-1.5 py-0.5 text-xs font-medium uppercase tracking-wide ${style.className}`} safe>{style.label}</span>
 }
 
-export function ReleaseNav({ releases, current }: { releases: ReleaseSummary[]; current: string | null | undefined }) {
+const STATUS_DOT: Record<string, string> = { 'awaiting-review': 'bg-amber-400', accepted: 'bg-emerald-500', 'changes-requested': 'bg-rose-500' }
+
+export interface TocEntry {
+  id: string
+  title: string
+  status: string
+}
+
+export function ReleaseNav({ releases, current, entries = [] }: { releases: ReleaseSummary[]; current: string | null | undefined; entries?: TocEntry[] }) {
   return (
     <nav aria-label="Releases">
-      <h2 class="mb-2 px-2 text-xs font-semibold uppercase tracking-wider text-stone-500">Releases</h2>
-      <ul class="flex gap-1 overflow-x-auto lg:flex-col">
+      <h2 class="mb-2 px-2 text-xs font-semibold uppercase tracking-wider text-stone-500">Patches</h2>
+      <ul class="space-y-0.5">
         {releases.map((release) => {
           const active = release.version === current
           const done = release.counts.accepted === release.total
@@ -54,6 +62,25 @@ export function ReleaseNav({ releases, current }: { releases: ReleaseSummary[]; 
                   {`${done ? '✓ ' : ''}${release.counts.accepted}/${release.total}`}
                 </span>
               </a>
+              {active && entries.length > 0 ? (
+                <ul class="mt-1 mb-2 ml-3 space-y-0.5 border-l border-stone-200 pl-2">
+                  {entries.map((entry) => (
+                    <li>
+                      <a
+                        href={`#entry-${entry.id}`}
+                        hx-boost="false"
+                        class="flex items-start gap-2 rounded px-1.5 py-1 text-xs text-stone-600 hover:bg-stone-200/60 hover:text-stone-900"
+                      >
+                        <span class={`mt-1 size-1.5 shrink-0 rounded-full ${STATUS_DOT[entry.status] ?? 'bg-stone-400'}`} aria-hidden="true" />
+                        <span class="sr-only" safe>{`${statusLabel(entry.status)}:`}</span>
+                        <span class="line-clamp-2" safe>{entry.title}</span>
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                ''
+              )}
             </li>
           )
         })}

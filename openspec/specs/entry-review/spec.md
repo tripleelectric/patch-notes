@@ -32,15 +32,23 @@ Any logged-in user SHALL be able to add a non-empty comment of at most 5000 char
 - **THEN** the history shows the comment and the status is unchanged
 
 ### Requirement: Review history
-The entry page SHALL list all events oldest first with kind, user name (or "publish" for `updated` events), time and comment text, preserving line breaks.
+Each entry section SHALL contain a collapsible history listing all events oldest first with kind, user name (or "publish" for `updated` events), time and comment text, preserving line breaks.
 
 #### Scenario: Updated after changes requested
 - **WHEN** changes were requested and a later publish changed the entry
 - **THEN** the history shows the request followed by an `updated` event and the status is `awaiting-review`
 
-### Requirement: Next to review
-The entry page SHALL link to the next entry awaiting review in the same release, following the release list order and wrapping around, or state that nothing else awaits review.
+### Requirement: In-place review
+A review action sent by htmx SHALL respond with the updated entry section only, including validation errors, so the page keeps its scroll position. Without htmx the action SHALL redirect to `/releases/<release>#entry-<id>`, or show the release page with the error at the entry and status `400`.
 
-#### Scenario: Next entry
-- **WHEN** entries `a`, `b` and `c` await review in one release and the user views `b`
-- **THEN** the page links to `c`
+#### Scenario: htmx accept
+- **WHEN** a reviewer accepts an entry with header `HX-Request: true`
+- **THEN** the response is the entry's section showing status "Accepted"
+
+#### Scenario: Plain form
+- **WHEN** a reviewer accepts an entry without htmx
+- **THEN** the response redirects to the entry's anchor on its release page
+
+#### Scenario: htmx validation error
+- **WHEN** a reviewer requests changes via htmx without a comment
+- **THEN** the response is the entry's section with the error and the status is unchanged

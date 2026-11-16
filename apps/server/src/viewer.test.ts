@@ -81,7 +81,7 @@ describe('releases', () => {
   })
 })
 
-describe('entry page', () => {
+describe('patch page', () => {
   const media = {
     data: { media: [{ before: 'media/b.png', after: 'media/a.png', caption: 'Export button' }, { video: 'media/v.webm' }] },
     media: [
@@ -96,7 +96,9 @@ describe('entry page', () => {
       [entry('a', { ...media.data, requests: ['https://app.asana.com/0/1/2'], try: '/invoices?export=1' }, { media: media.media })],
       'https://app.example.com',
     )
-    const body = (await page(app, '/entries/a', cookie)).body
+    const body = (await page(app, '/releases/unreleased', cookie)).body
+    expect(body).toMatch(/<details open[^>]*id="entry-a"/)
+    expect(body).toContain('Body of a')
     expect(body).toContain('>Before<')
     expect(body).toContain('>After<')
     expect(body).toContain(`/media/${sha(PNG)}.png`)
@@ -107,7 +109,7 @@ describe('entry page', () => {
 
   it('shows a path try link as text without appUrl', async () => {
     const { app, cookie } = await setup([entry('a', { try: '/invoices' })])
-    const body = (await page(app, '/entries/a', cookie)).body
+    const body = (await page(app, '/releases/unreleased', cookie)).body
     expect(body).not.toContain('Try it')
     expect(body).toContain('/invoices')
   })
@@ -121,11 +123,27 @@ describe('entry page', () => {
     expect((await post(app, '/entries/a/review', { action: 'accept', body: '' }, cookie)).statusCode).toBe(400)
   })
 
+  it('lists all entries in full with links in the navigation', async () => {
+    const { app, cookie } = await setup([entry('a'), entry('b', { type: 'fix' })])
+    await setStatus(app, 'b', 'accepted')
+    const body = (await page(app, '/releases/unreleased', cookie)).body
+    expect(body).toContain('Body of a')
+    expect(body).toContain('Body of b')
+    expect(body).toContain('href="#entry-a"')
+    expect(body).toMatch(/href="#entry-b"[\s\S]*?Accepted:/)
+  })
+
+  it('redirects the permalink to the entry anchor', async () => {
+    const { app, cookie } = await setup([entry('a'), entry('b', {}, { version: '1.0.0' })])
+    expect((await page(app, '/entries/a', cookie)).headers.location).toBe('/releases/unreleased#entry-a')
+    expect((await page(app, '/entries/b', cookie)).headers.location).toBe('/releases/1.0.0#entry-b')
+  })
+
   it('renders hostile content safely', async () => {
     const { app, cookie } = await setup([
       entry('a', { title: '<script>alert(1)</script>' }, { body: '<script>alert(2)</script>\n\n[x](javascript:alert(3)) [ok](https://example.com)' }),
     ])
-    const body = (await page(app, '/entries/a', cookie)).body
+    const body = (await page(app, '/releases/unreleased', cookie)).body
     expect(body).not.toMatch(/<script>alert/)
     expect(body).not.toMatch(/href="javascript:/i)
     expect(body).toContain('href="https://example.com"')
@@ -168,7 +186,7 @@ describe('review', () => {
     const reviewer = await addUser(app, cookie, 'pat@example.com', 'reviewer', 'Pat')
     expect((await post(app, '/entries/a/review', { action: 'accept', body: '' }, reviewer.cookie)).statusCode).toBe(303)
     expect((await app.prisma.entry.findUniqueOrThrow({ where: { id: 'a' } })).status).toBe('accepted')
-    const body = (await page(app, '/entries/a', reviewer.cookie)).body
+    const body = (await page(app, '/releases/unreleased', reviewer.cookie)).body
     expect(body).toMatch(/Pat<\/strong>\s*<span>accepted/)
   })
 
@@ -190,7 +208,7 @@ describe('review', () => {
       payload: { entries: [{ ...entry('a'), body: 'New body' }] },
       headers: { authorization: `Bearer ${TOKEN}` },
     })
-    const body = (await page(app, '/entries/a', cookie)).body
+    const body = (await page(app, '/releases/unreleased', cookie)).body
     expect(body).toContain('Export button is hard to find\nsecond line')
     expect(body.indexOf('requested changes')).toBeLessThan(body.indexOf('updated the entry'))
     expect((await app.prisma.entry.findUniqueOrThrow({ where: { id: 'a' } })).status).toBe('awaiting-review')
@@ -200,16 +218,29 @@ describe('review', () => {
     const { app, cookie } = await setup([entry('a')])
     await post(app, '/entries/a/review', { action: 'comment', body: '<b>Looks good</b>, waiting for PO' }, cookie)
     expect((await app.prisma.entry.findUniqueOrThrow({ where: { id: 'a' } })).status).toBe('awaiting-review')
-    expect((await page(app, '/entries/a', cookie)).body).toContain('&lt;b>Looks good&lt;/b>, waiting for PO')
+    expect((await page(app, '/releases/unreleased', cookie)).body).toContain('&lt;b>Looks good&lt;/b>, waiting for PO')
     expect((await post(app, '/entries/a/review', { action: 'comment', body: 'x'.repeat(5001) }, cookie)).statusCode).toBe(400)
   })
 
-  it('links the next entry awaiting review, wrapping around', async () => {
-    const { app, cookie } = await setup(['a', 'b', 'c'].map((id) => entry(id)))
-    expect((await page(app, '/entries/b', cookie)).body).toContain('href="/entries/c"')
-    expect((await page(app, '/entries/c', cookie)).body).toContain('href="/entries/a"')
-    await setStatus(app, 'a', 'accepted')
-    await setStatus(app, 'c', 'accepted')
-    expect((await page(app, '/entries/b', cookie)).body).toContain('Nothing else awaits review')
+  it('redirects plain form reviews to the entry anchor', async () => {
+    const { app, cookie } = await setup([entry('a')])
+    expect((await post(app, '/entries/a/review', { action: 'accept', body: '' }, cookie)).headers.location).toBe('/releases/unreleased#entry-a')
+  })
+
+  it('answers htmx reviews with the updated section only', async () => {
+    const { app, cookie } = await setup([entry('a')])
+    const response = await post(app, '/entries/a/review', { action: 'accept', body: '' }, cookie, { 'hx-request': 'true' })
+    expect(response.statusCode).toBe(200)
+    expect(response.body).toMatch(/^<details open[^>]*id="entry-a"/)
+    expect(response.body).toContain('Accepted')
+    expect(response.body).not.toContain('<html')
+  })
+
+  it('shows htmx validation errors inside the section', async () => {
+    const { app, cookie } = await setup([entry('a')])
+    const response = await post(app, '/entries/a/review', { action: 'request-changes', body: '' }, cookie, { 'hx-request': 'true' })
+    expect(response.statusCode).toBe(200)
+    expect(response.body).toContain('Describe which changes you need')
+    expect((await app.prisma.entry.findUniqueOrThrow({ where: { id: 'a' } })).status).toBe('awaiting-review')
   })
 })

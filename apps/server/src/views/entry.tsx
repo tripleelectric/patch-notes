@@ -20,10 +20,20 @@ export interface EntryView {
   requests: unknown
   try: string | null
   media: unknown
+  body: string
   removedAt: Date | null
   events: Array<{ id: string; kind: string; body: string | null; createdAt: Date; user: { name: string } | null }>
 }
 
+/** Everything an entry section needs besides the stored entry. */
+export interface EntryExtras {
+  safeBodyHtml: string
+  tryUrl: string | undefined
+  comment?: string
+  error?: string
+}
+
+export const entryAnchor = (id: string) => `entry-${id}`
 const mediaUrl = (ref: MediaRef) => `/media/${mediaFileName(ref.sha256, ref.contentType)}`
 const formatTime = (date: Date) => `${date.toISOString().slice(0, 16).replace('T', ' ')} UTC`
 
@@ -37,7 +47,7 @@ function Image({ media, label }: { media: MediaRef; label: string }) {
 
 function MediaBlock({ item }: { item: MediaItem }) {
   return (
-    <figure class="rounded-lg border border-stone-200 bg-white p-3">
+    <figure>
       {item.before && item.after ? (
         <div class="grid gap-3 sm:grid-cols-2">
           <div>
@@ -75,46 +85,55 @@ const EVENT_LABEL: Record<string, string> = {
 }
 
 function History({ events }: { events: EntryView['events'] }) {
-  if (events.length === 0) return <p class="text-sm text-stone-500">No activity yet.</p>
   return (
-    <ol class="space-y-4">
-      {events.map((event) => (
-        <li class="text-sm">
-          <p class="text-stone-600">
-            <strong class="font-medium text-stone-900" safe>
-              {event.user?.name ?? 'publish'}
-            </strong>{' '}
-            <span safe>{EVENT_LABEL[event.kind] ?? event.kind}</span>
-            <time class="ml-1 text-xs text-stone-400" datetime={event.createdAt.toISOString()} safe>
-              {formatTime(event.createdAt)}
-            </time>
-          </p>
-          {event.body ? (
-            <p class="mt-1 whitespace-pre-wrap rounded-md bg-stone-100 px-3 py-2 text-stone-800" safe>
-              {event.body}
-            </p>
-          ) : (
-            ''
-          )}
-        </li>
-      ))}
-    </ol>
+    <details class="group/history">
+      <summary class="cursor-pointer select-none text-sm font-medium text-stone-600 hover:text-stone-900" safe>
+        {`History (${events.length})`}
+      </summary>
+      {events.length === 0 ? (
+        <p class="mt-3 text-sm text-stone-500">No activity yet.</p>
+      ) : (
+        <ol class="mt-3 space-y-3">
+          {events.map((event) => (
+            <li class="text-sm">
+              <p class="text-stone-600">
+                <strong class="font-medium text-stone-900" safe>
+                  {event.user?.name ?? 'publish'}
+                </strong>{' '}
+                <span safe>{EVENT_LABEL[event.kind] ?? event.kind}</span>
+                <time class="ml-1 text-xs text-stone-400" datetime={event.createdAt.toISOString()} safe>
+                  {formatTime(event.createdAt)}
+                </time>
+              </p>
+              {event.body ? (
+                <p class="mt-1 whitespace-pre-wrap rounded-md bg-stone-100 px-3 py-2 text-stone-800" safe>
+                  {event.body}
+                </p>
+              ) : (
+                ''
+              )}
+            </li>
+          ))}
+        </ol>
+      )}
+    </details>
   )
 }
 
-function ReviewPanel({ entry, comment, error }: { entry: EntryView; comment: string; error: string | undefined }) {
+function ReviewForm({ entry, comment, error }: { entry: EntryView; comment: string; error: string | undefined }) {
+  const target = `#${entryAnchor(entry.id)}`
   return (
-    <form method="post" action={`/entries/${entry.id}/review`} class="space-y-3">
+    <form method="post" action={`/entries/${entry.id}/review`} hx-post={`/entries/${entry.id}/review`} hx-target={target} hx-swap="outerHTML" class="space-y-2">
       {error ? <Alert kind="error" message={error} /> : ''}
-      <label class="block text-sm font-medium" for="review-comment">
+      <label class="sr-only" for={`comment-${entry.id}`}>
         Comment
       </label>
       <textarea
-        id="review-comment"
+        id={`comment-${entry.id}`}
         name="body"
-        rows="4"
+        rows="2"
         maxlength="5000"
-        placeholder="Required when requesting changes"
+        placeholder="Comment (required when requesting changes)"
         class="block w-full rounded-md border border-stone-300 bg-white px-3 py-2 text-sm focus:border-stone-500 focus:outline-none"
         safe
       >
@@ -135,109 +154,78 @@ function ReviewPanel({ entry, comment, error }: { entry: EntryView; comment: str
   )
 }
 
-export function EntryPage(props: {
-  user: SessionUser
-  entry: EntryView
-  safeBodyHtml: string
-  tryUrl: string | undefined
-  next: { id: string; title: string } | undefined
-  comment?: string
-  error?: string
-}) {
-  const { user, entry, safeBodyHtml, tryUrl, next, comment = '', error } = props
+/** One entry as a collapsible section; also the htmx fragment returned by review actions. */
+export function EntrySection({ entry, safeBodyHtml, tryUrl, comment = '', error }: { entry: EntryView } & EntryExtras) {
   const requests = Array.isArray(entry.requests) ? (entry.requests as string[]) : []
   const media = Array.isArray(entry.media) ? (entry.media as MediaItem[]) : []
   return (
+    <details open id={entryAnchor(entry.id)} class="group scroll-mt-6 rounded-xl border border-stone-200 bg-white shadow-sm">
+      <summary class="flex cursor-pointer select-none list-none items-center gap-3 px-5 py-4 [&::-webkit-details-marker]:hidden">
+        <span class="text-stone-400 transition-transform group-open:rotate-90" aria-hidden="true">
+          ▸
+        </span>
+        <h3 class="min-w-0 grow text-lg font-semibold tracking-tight" safe>
+          {entry.title}
+        </h3>
+        <StatusPill status={entry.status} />
+      </summary>
+      <div class="space-y-5 border-t border-stone-100 px-5 pt-4 pb-5">
+        <div class="flex flex-wrap items-center gap-2 text-sm text-stone-500">
+          <TypeBadge type={entry.type} />
+          <span safe>{entry.date}</span>
+          {tryUrl ? (
+            <a
+              href={tryUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              class="ml-auto rounded-md bg-stone-900 px-3 py-1 text-sm font-medium text-white hover:bg-stone-700"
+            >
+              Try it ↗
+            </a>
+          ) : entry.try ? (
+            <span class="ml-auto rounded-md bg-stone-100 px-2 py-1 font-mono text-xs text-stone-700" safe>
+              {entry.try}
+            </span>
+          ) : (
+            ''
+          )}
+          {requests.map((url, index) => (
+            <a
+              href={url}
+              target="_blank"
+              rel="noopener noreferrer"
+              class={`${tryUrl || entry.try || index > 0 ? '' : 'ml-auto '}rounded-md bg-white px-3 py-1 text-sm text-stone-700 ring-1 ring-stone-300 hover:bg-stone-100`}
+            >
+              {requests.length > 1 ? `Request ${index + 1} ↗` : 'Request ↗'}
+            </a>
+          ))}
+        </div>
+        {media.map((item) => (
+          <MediaBlock item={item} />
+        ))}
+        <article class="prose">{safeBodyHtml}</article>
+        <div class="space-y-3 rounded-lg bg-stone-50 p-4">
+          {entry.removedAt ? (
+            <Alert kind="error" message="This entry was removed from the repository and is no longer part of the patch notes." />
+          ) : (
+            <ReviewForm entry={entry} comment={comment} error={error} />
+          )}
+          <History events={entry.events} />
+        </div>
+      </div>
+    </details>
+  )
+}
+
+export function RemovedEntryPage({ user, entry, ...extras }: { user: SessionUser; entry: EntryView } & EntryExtras) {
+  return (
     <Shell title={entry.title} user={user}>
-      <nav aria-label="Breadcrumb" class="text-sm text-stone-500">
+      <nav aria-label="Breadcrumb" class="mb-4 text-sm text-stone-500">
         <a href={releasePath(entry.version)} class="hover:underline" safe>
           {`← ${releaseLabel(entry.version)}`}
         </a>
       </nav>
-      <h1 class="mt-1 text-3xl font-semibold tracking-tight" safe>
-        {entry.title}
-      </h1>
-      <div class="mt-3 flex flex-wrap items-center gap-3 text-sm text-stone-500">
-        <TypeBadge type={entry.type} />
-        <span safe>{entry.date}</span>
-        <StatusPill status={entry.status} />
-      </div>
-
-      {entry.removedAt ? (
-        <div class="mt-6">
-          <Alert kind="error" message="This entry was removed from the repository and is no longer part of the patch notes." />
-        </div>
-      ) : (
-        ''
-      )}
-
-      <div class="mt-8 grid gap-8 lg:grid-cols-[minmax(0,1fr)_22rem]">
-        <div class="min-w-0 space-y-6">
-          {tryUrl || entry.try || requests.length > 0 ? (
-            <div class="flex flex-wrap items-center gap-2">
-              {tryUrl ? (
-                <a
-                  href={tryUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  class="rounded-md bg-stone-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-stone-700"
-                >
-                  Try it ↗
-                </a>
-              ) : entry.try ? (
-                <span class="rounded-md bg-stone-100 px-3 py-1.5 font-mono text-sm text-stone-700" safe>
-                  {entry.try}
-                </span>
-              ) : (
-                ''
-              )}
-              {requests.map((url, index) => (
-                <a
-                  href={url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  class="rounded-md bg-white px-3 py-1.5 text-sm text-stone-700 ring-1 ring-stone-300 hover:bg-stone-100"
-                >
-                  {requests.length > 1 ? `Request ${index + 1} ↗` : 'Request ↗'}
-                </a>
-              ))}
-            </div>
-          ) : (
-            ''
-          )}
-          {media.map((item) => (
-            <MediaBlock item={item} />
-          ))}
-          <article class="prose">{safeBodyHtml}</article>
-        </div>
-
-        <aside class="space-y-6">
-          {entry.removedAt ? (
-            ''
-          ) : (
-            <section class="rounded-lg border border-stone-200 bg-white p-4">
-              <h2 class="mb-3 text-sm font-semibold">Your review</h2>
-              <ReviewPanel entry={entry} comment={comment} error={error} />
-            </section>
-          )}
-          <section class="rounded-lg border border-stone-200 bg-white p-4 text-sm">
-            {next ? (
-              <a href={`/entries/${next.id}`} class="flex items-center gap-2 font-medium text-stone-900 hover:underline">
-                <span class="min-w-0 truncate">
-                  Next to review: <span safe>{next.title}</span>
-                </span>
-                <span aria-hidden="true">→</span>
-              </a>
-            ) : (
-              <p class="text-stone-500">Nothing else awaits review in this release.</p>
-            )}
-          </section>
-          <section>
-            <h2 class="mb-3 text-sm font-semibold">History</h2>
-            <History events={entry.events} />
-          </section>
-        </aside>
-      </div>
+      <EntrySection entry={entry} {...extras} />
     </Shell>
   )
 }
