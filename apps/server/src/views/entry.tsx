@@ -180,6 +180,17 @@ export function EntrySection({ entry, position, safeBodyHtml, tryUrl, comment = 
         <div class="flex flex-wrap items-center gap-2 text-sm text-stone-500">
           <TypeBadge type={entry.type} />
           <span safe>{formatDate(entry.date)}</span>
+          {requests.map((url, index) => (
+            <a
+              href={url}
+              target="_blank"
+              rel="noopener noreferrer"
+              class="rounded-md bg-white px-2.5 py-0.5 text-sm text-stone-700 ring-1 ring-stone-300 hover:bg-stone-100"
+              safe
+            >
+              {requests.length > 1 ? t('entry.ticketN', { n: index + 1 }) : t('entry.ticket')}
+            </a>
+          ))}
           {tryUrl ? (
             <a
               href={tryUrl}
@@ -197,17 +208,6 @@ export function EntrySection({ entry, position, safeBodyHtml, tryUrl, comment = 
           ) : (
             ''
           )}
-          {requests.map((url, index) => (
-            <a
-              href={url}
-              target="_blank"
-              rel="noopener noreferrer"
-              class={`${tryUrl || entry.try || index > 0 ? '' : 'ml-auto '}rounded-md bg-white px-3 py-1 text-sm text-stone-700 ring-1 ring-stone-300 hover:bg-stone-100`}
-              safe
-            >
-              {requests.length > 1 ? t('entry.requestN', { n: index + 1 }) : t('entry.request')}
-            </a>
-          ))}
         </div>
         {media.map((item) => (
           <MediaBlock item={item} />

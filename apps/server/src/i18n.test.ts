@@ -94,3 +94,14 @@ describe('position numbers', () => {
     expect(response.body).toMatch(/>2<\/span>/)
   })
 })
+
+describe('ticket links', () => {
+  it('labels request links as tickets right after the date, before media', async () => {
+    const withTickets = { ...entry('a'), data: { ...entry('a').data, requests: ['https://app.asana.com/0/1/2', 'https://app.asana.com/0/1/3'] } }
+    const { app, cookie } = await setup('de', [withTickets])
+    const body = (await app.inject({ url: '/releases/unreleased', headers: { cookie } })).body
+    expect(body).toMatch(/14\.11\.2026<\/span>\s*<a href="https:\/\/app\.asana\.com\/0\/1\/2"[^>]*>Ticket 1 ↗/)
+    expect(body).toContain('Ticket 2 ↗')
+    expect(body).not.toContain('Anfrage')
+  })
+})
