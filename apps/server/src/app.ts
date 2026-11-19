@@ -9,7 +9,8 @@ import type { Config } from './config.js'
 import { createPrisma, migrate, MIGRATIONS_DIR } from './db.js'
 import type { PrismaClient } from './generated/prisma/client.js'
 import { isHtmx, toHeaders } from './http.js'
-import { t, withLanguage } from './i18n.js'
+import { t, withContext } from './i18n.js'
+import { themeFromCookie } from './http.js'
 import { adminRoutes } from './routes/admin.js'
 import { authRoutes } from './routes/auth.js'
 import { inviteRoutes } from './routes/invite.js'
@@ -84,7 +85,7 @@ export async function buildApp(config: Config, options: AppOptions = {}) {
   app.decorateRequest('user', null)
   app.addHook('onClose', () => prisma.$disconnect())
   // Everything rendered for a request uses the instance's interface language.
-  app.addHook('onRequest', (_request, _reply, done) => withLanguage(config.language, done))
+  app.addHook('onRequest', (request, _reply, done) => withContext({ language: config.language, theme: themeFromCookie(request.headers.cookie) }, done))
 
   const bootstrap = await bootstrapAdmin(auth, prisma, config)
   if (bootstrap === 'created') app.log.info(`created admin ${config.adminEmail}`)

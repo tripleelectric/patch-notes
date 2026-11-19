@@ -6,43 +6,6 @@ Shows reviewers what shipped, release by release and entry by entry, with everyt
 
 ## Requirements
 
-### Requirement: Default release
-`/` SHALL redirect to `/releases/unreleased` when unreleased entries exist, else to the highest released version, else show an empty state explaining `patchnotes publish`.
-
-#### Scenario: Default release
-- **WHEN** unreleased entries exist and a user opens `/`
-- **THEN** the response redirects to `/releases/unreleased`
-
-#### Scenario: Nothing published
-- **WHEN** no entries exist
-- **THEN** `/` shows a hint to run `patchnotes publish`
-
-### Requirement: Release page
-`/releases/unreleased` and `/releases/<X.Y.Z>` SHALL show all the release's entries that are not removed on one page, grouped by type in the order features, fixes, changes. Each entry SHALL be a collapsible section, expanded by default, with the anchor `entry-<id>`, showing title, type, date, review status, links, media, rendered body, review form and history. A release without entries SHALL return `404`.
-
-#### Scenario: Grouped entries
-- **WHEN** a release has a fix and a feature
-- **THEN** the feature group is listed before the fix group
-
-#### Scenario: Full entries on one page
-- **WHEN** a user opens a release with two entries that have bodies and media
-- **THEN** both bodies and all media are on the release page inside collapsible sections
-
-#### Scenario: Unknown release
-- **WHEN** a user opens `/releases/9.9.9` with no such entries
-- **THEN** the response is `404`
-
-### Requirement: Release navigation
-Every release page SHALL show all releases with entries, Unreleased first, then versions from highest to lowest, each with its entry count and, when there are any, its number of open change requests. Under the current release it SHALL list that release's entries as links to their anchors, marking entries with changes requested.
-
-#### Scenario: Version ordering
-- **WHEN** versions `1.2.0`, `1.10.0` and `1.9.1` exist
-- **THEN** the release navigation lists them as `1.10.0`, `1.9.1`, `1.2.0`
-
-#### Scenario: Entry links
-- **WHEN** a user opens a release containing entry `invoice-export` with changes requested
-- **THEN** the navigation links to `#entry-invoice-export` and marks it as having changes requested
-
 ### Requirement: Try link
 When an entry has `try`, the page SHALL show a "Try it" link: the URL itself when absolute, or the path appended to the published `appUrl`. Without an `appUrl` a path SHALL be shown as text, not as a link.
 
@@ -69,11 +32,11 @@ Entry bodies SHALL be rendered from markdown without passing through raw HTML, a
 - **THEN** the response is `206` with 10 bytes
 
 ### Requirement: Entry permalink
-`/entries/<id>` SHALL redirect to `/releases/<release>#entry-<id>` for entries that are not removed. For removed entries it SHALL show the entry with a notice that it was removed from the repository and without review actions. Unknown ids SHALL return `404`.
+`/entries/<id>` SHALL redirect to `/#entry-<id>` for entries that are not removed. For removed entries it SHALL show the entry with a notice that it was removed from the repository and without review actions. Unknown ids SHALL return `404`.
 
 #### Scenario: Permalink
 - **WHEN** a user opens `/entries/invoice-export` of an unreleased entry
-- **THEN** the response redirects to `/releases/unreleased#entry-invoice-export`
+- **THEN** the response redirects to `/#entry-invoice-export`
 
 #### Scenario: Removed entry
 - **WHEN** an entry was removed by the last publish
@@ -81,29 +44,29 @@ Entry bodies SHALL be rendered from markdown without passing through raw HTML, a
 
 #### Scenario: Before and after
 - **WHEN** an entry has a before/after media item
-- **THEN** its section shows both images labelled "Before" and "After"
+- **THEN** its expanded row shows both images labelled "Before" and "After"
 
 ### Requirement: Position numbers
-Each entry on a release page SHALL show its position number, 1 to n in release order, on its section and in the navigation. Numbers SHALL stay the same when a status filter is active.
+Each entry SHALL show its position number within its release, 1 to n in release order (type: features, fixes, changes; then newest date first). Numbers SHALL stay the same when a filter is active.
 
 #### Scenario: Numbers in order
 - **WHEN** a release has a feature and a fix
 - **THEN** the feature is number 1 and the fix number 2
 
 #### Scenario: Filtered
-- **WHEN** only the second entry awaits review and the awaiting-review filter is active
+- **WHEN** only the second entry has changes requested and the change request filter is active
 - **THEN** that entry still shows number 2
 
 ### Requirement: Release date shown
-A released version's page header and navigation item SHALL show its ship date: the published release date, or the newest entry date of the release when none was published. Unreleased SHALL be labelled as not yet released.
+Each released version on the release rail SHALL show its ship date: the published release date, or the newest entry date of the release when none was published. Unreleased SHALL be labelled as not yet released.
 
 #### Scenario: Published date
 - **WHEN** `1.0.0` was published with date `2026-10-15`
-- **THEN** its header and navigation item show that date
+- **THEN** its rail item shows that date
 
 #### Scenario: Fallback
 - **WHEN** `1.1.0` has no published date and its newest entry is dated `2026-11-06`
-- **THEN** its header shows `2026-11-06` formatted for the interface language
+- **THEN** its rail item shows `2026-11-06` formatted for the interface language
 
 ### Requirement: Interface language
 All pages SHALL use the interface language set by `LANGUAGE` for labels, messages and date formats: English (`en`, default) or German (`de`). Entry content SHALL be shown as written.
@@ -112,9 +75,64 @@ All pages SHALL use the interface language set by `LANGUAGE` for labels, message
 - **WHEN** the server runs with `LANGUAGE=de`
 - **THEN** the login page shows "Anmelden", a change request reads "Änderungen angefragt", and dates read like `14.11.2026`
 
-### Requirement: Change request filter
-A release page SHALL accept `?status=changes-requested` and then list only entries with an open change request; the filter SHALL be offered only when the release has such entries.
+### Requirement: Changelog timeline
+`/` SHALL show all releases with entries that are not removed, Unreleased first, then versions from highest to lowest, each as a section with the anchor `release-<release>`. Without entries it SHALL show an empty state explaining `patchnotes publish`.
+
+#### Scenario: Version ordering
+- **WHEN** versions `1.2.0`, `1.10.0` and `1.9.1` exist
+- **THEN** the timeline lists them as `1.10.0`, `1.9.1`, `1.2.0`
+
+#### Scenario: Nothing published
+- **WHEN** no entries exist
+- **THEN** `/` shows a hint to run `patchnotes publish`
+
+### Requirement: Release rail
+Each release section SHALL show, beside its entries, the release label, ship date or "not yet released", entry count and number of open change requests when there are any.
+
+#### Scenario: Open requests on rail
+- **WHEN** a release has one entry with changes requested
+- **THEN** its rail item shows one open change request
+
+### Requirement: Collapsed entries
+Entries SHALL be rows showing position, type, title, a change request marker when flagged, feedback count and date, collapsed by default. Expanding a row SHALL show ticket links, try link, media, rendered body, feedback form and history. Navigating to an entry's anchor SHALL expand it.
+
+#### Scenario: Collapsed by default
+- **WHEN** a user opens `/`
+- **THEN** every entry title is visible and entry bodies are collapsed
+
+#### Scenario: Anchor expands
+- **WHEN** a user opens `/#entry-invoice-export`
+- **THEN** that entry is expanded and scrolled into view
+
+### Requirement: Timeline filters
+`/` SHALL accept `?show=feature|fix|change|changes-requested` and then list only matching entries, hiding releases without matches. The header SHALL offer these filters with their counts.
+
+#### Scenario: Only fixes
+- **WHEN** a user opens `/?show=fix`
+- **THEN** only fix entries are listed
 
 #### Scenario: Only change requests
-- **WHEN** a user opens `/releases/unreleased?status=changes-requested`
+- **WHEN** a user opens `/?show=changes-requested`
 - **THEN** only entries with changes requested are listed
+
+### Requirement: Release links
+`/releases/unreleased` and `/releases/<X.Y.Z>` SHALL redirect to `/#release-<release>`; unknown or malformed releases SHALL return `404`.
+
+#### Scenario: Release link
+- **WHEN** a user opens `/releases/1.1.0` and that release has entries
+- **THEN** the response redirects to `/#release-1.1.0`
+
+#### Scenario: Unknown release
+- **WHEN** a user opens `/releases/9.9.9`
+- **THEN** the response is `404`
+
+### Requirement: Color theme
+Pages SHALL render in light or dark colors following the system setting by default. A control in the header SHALL switch between system, light and dark; the choice SHALL be stored in a cookie and applied on the server when rendering.
+
+#### Scenario: Default follows system
+- **WHEN** a user has made no choice
+- **THEN** the page carries no fixed theme and follows `prefers-color-scheme`
+
+#### Scenario: Dark chosen
+- **WHEN** a user chooses dark
+- **THEN** later pages render with the dark theme regardless of the system setting

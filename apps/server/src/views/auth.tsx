@@ -27,7 +27,7 @@ export function LoginPage({ next, email = '', error }: { next: string; email?: s
 export function InvitePage({ email, action, name = '', error }: { email: string; action: string; name?: string; error?: string }) {
   return (
     <CenteredCard title={t('invite.title')}>
-      <p class="mb-4 text-sm text-stone-600">
+      <p class="mb-4 text-sm text-muted">
         <span safe>{t('invite.introBefore')}</span> <strong safe>{email}</strong>. <span safe>{t('invite.introAfter')}</span>
       </p>
       {error ? <Alert kind="error" message={error} /> : null}
@@ -55,7 +55,7 @@ export function InvitePage({ email, action, name = '', error }: { email: string;
 export function MessagePage({ title, message }: { title: string; message: string }) {
   return (
     <CenteredCard title={title}>
-      <p class="text-sm text-stone-600" safe>
+      <p class="text-sm text-muted" safe>
         {message}
       </p>
       <p class="mt-6 text-sm">

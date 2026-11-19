@@ -36,13 +36,13 @@ const page = (app: FastifyInstance, url: string, cookie: string, headers: Record
 
 const setStatus = (app: FastifyInstance, id: string, status: string) => app.prisma.entry.update({ where: { id }, data: { status } })
 
-describe('releases', () => {
-  it('redirects / to unreleased, else the highest version', async () => {
-    const { app, cookie } = await setup([entry('a'), entry('b', {}, { version: '1.2.0' })])
-    expect((await page(app, '/', cookie)).headers.location).toBe('/releases/unreleased')
-
-    const released = await setup([entry('b', {}, { version: '1.2.0' }), entry('c', {}, { version: '1.10.0' })])
-    expect((await page(released.app, '/', released.cookie)).headers.location).toBe('/releases/1.10.0')
+describe('timeline', () => {
+  it('shows all releases, unreleased first, then versions numerically', async () => {
+    const { app, cookie } = await setup(['1.2.0', '1.10.0', '1.9.1'].map((v, i) => entry(`e${i}`, {}, { version: v })).concat(entry('u')))
+    const body = (await page(app, '/', cookie)).body
+    const order = ['release-unreleased', 'release-1.10.0', 'release-1.9.1', 'release-1.2.0'].map((id) => body.indexOf(`id="${id}"`))
+    expect(order.every((index) => index > 0)).toBe(true)
+    expect([...order].sort((x, y) => x - y)).toEqual(order)
   })
 
   it('shows an empty state without entries', async () => {
@@ -50,37 +50,43 @@ describe('releases', () => {
     expect((await page(app, '/', cookie)).body).toContain('patchnotes publish')
   })
 
-  it('orders versions numerically in the navigation', async () => {
-    const { app, cookie } = await setup(['1.2.0', '1.10.0', '1.9.1'].map((v, i) => entry(`e${i}`, {}, { version: v })))
-    const body = (await page(app, '/releases/1.2.0', cookie)).body
-    const order = ['v1.10.0', 'v1.9.1', 'v1.2.0'].map((label) => body.indexOf(`>${label}<`))
-    expect(order.every((index) => index > 0)).toBe(true)
-    expect([...order].sort((a, b) => a - b)).toEqual(order)
+  it('collapses entries by default and orders features before fixes', async () => {
+    const { app, cookie } = await setup([entry('fix-one', { type: 'fix' }), entry('feature-one')])
+    const body = (await page(app, '/', cookie)).body
+    expect(body).toMatch(/<details id="entry-feature-one"/)
+    expect(body).not.toMatch(/<details open[^>]*id="entry-/)
+    expect(body.indexOf('Title feature-one')).toBeLessThan(body.indexOf('Title fix-one'))
   })
 
-  it('groups features before fixes and 404s unknown releases', async () => {
-    const { app, cookie } = await setup([entry('fix-one', { type: 'fix' }), entry('feature-one')])
-    const body = (await page(app, '/releases/unreleased', cookie)).body
-    expect(body.indexOf('Title feature-one')).toBeLessThan(body.indexOf('Title fix-one'))
+  it('redirects release links to their section and 404s unknown releases', async () => {
+    const { app, cookie } = await setup([entry('a'), entry('b', {}, { version: '1.1.0' })])
+    expect((await page(app, '/releases/1.1.0', cookie)).headers.location).toBe('/#release-1.1.0')
+    expect((await page(app, '/releases/unreleased', cookie)).headers.location).toBe('/#release-unreleased')
     expect((await page(app, '/releases/9.9.9', cookie)).statusCode).toBe(404)
     expect((await page(app, '/releases/latest', cookie)).statusCode).toBe(404)
   })
 
-  it('shows open change requests and filters by them', async () => {
+  it('shows open change requests on the rail and filters by them', async () => {
     const { app, cookie } = await setup(['a', 'b', 'c'].map((id) => entry(id)))
-    expect((await page(app, '/releases/unreleased', cookie)).body).not.toContain('open change request')
+    expect((await page(app, '/', cookie)).body).not.toContain('open change request')
     await setStatus(app, 'c', 'changes-requested')
-    const body = (await page(app, '/releases/unreleased', cookie)).body
+    const body = (await page(app, '/', cookie)).body
     expect(body).toContain('1 open change request')
-    expect(body).not.toContain('accepted')
-    const filtered = (await page(app, '/releases/unreleased?status=changes-requested', cookie)).body
+    const filtered = (await page(app, '/?show=changes-requested', cookie)).body
     expect(filtered).toContain('id="entry-c"')
     expect(filtered).not.toContain('id="entry-a"')
   })
 
+  it('filters by type and hides releases without matches', async () => {
+    const { app, cookie } = await setup([entry('a'), entry('f', { type: 'fix' }, { version: '1.0.0' })])
+    const body = (await page(app, '/?show=fix', cookie)).body
+    expect(body).toContain('id="entry-f"')
+    expect(body).not.toContain('id="entry-a"')
+    expect(body).not.toContain('id="release-unreleased"')
+  })
 })
 
-describe('patch page', () => {
+describe('entry rows', () => {
   const media = {
     data: { media: [{ before: 'media/b.png', after: 'media/a.png', caption: 'Export button' }, { video: 'media/v.webm' }] },
     media: [
@@ -95,8 +101,8 @@ describe('patch page', () => {
       [entry('a', { ...media.data, requests: ['https://app.asana.com/0/1/2'], try: '/invoices?export=1' }, { media: media.media })],
       'https://app.example.com',
     )
-    const body = (await page(app, '/releases/unreleased', cookie)).body
-    expect(body).toMatch(/<details open[^>]*id="entry-a"/)
+    const body = (await page(app, '/', cookie)).body
+    expect(body).toContain('id="entry-a"')
     expect(body).toContain('Body of a')
     expect(body).toContain('>Before<')
     expect(body).toContain('>After<')
@@ -108,7 +114,7 @@ describe('patch page', () => {
 
   it('shows a path try link as text without appUrl', async () => {
     const { app, cookie } = await setup([entry('a', { try: '/invoices' })])
-    const body = (await page(app, '/releases/unreleased', cookie)).body
+    const body = (await page(app, '/', cookie)).body
     expect(body).not.toContain('Try it')
     expect(body).toContain('/invoices')
   })
@@ -122,27 +128,26 @@ describe('patch page', () => {
     expect((await post(app, '/entries/a/review', { action: 'accept', body: '' }, cookie)).statusCode).toBe(400)
   })
 
-  it('lists all entries in full with links in the navigation', async () => {
+  it('marks entries with changes requested in their row', async () => {
     const { app, cookie } = await setup([entry('a'), entry('b', { type: 'fix' })])
     await setStatus(app, 'b', 'changes-requested')
-    const body = (await page(app, '/releases/unreleased', cookie)).body
+    const body = (await page(app, '/', cookie)).body
     expect(body).toContain('Body of a')
     expect(body).toContain('Body of b')
-    expect(body).toContain('href="#entry-a"')
-    expect(body).toMatch(/href="#entry-b"[\s\S]*?Changes requested/)
+    expect(body).toMatch(/id="entry-b"[\s\S]*?Changes requested/)
   })
 
   it('redirects the permalink to the entry anchor', async () => {
     const { app, cookie } = await setup([entry('a'), entry('b', {}, { version: '1.0.0' })])
-    expect((await page(app, '/entries/a', cookie)).headers.location).toBe('/releases/unreleased#entry-a')
-    expect((await page(app, '/entries/b', cookie)).headers.location).toBe('/releases/1.0.0#entry-b')
+    expect((await page(app, '/entries/a', cookie)).headers.location).toBe('/#entry-a')
+    expect((await page(app, '/entries/b', cookie)).headers.location).toBe('/#entry-b')
   })
 
   it('renders hostile content safely', async () => {
     const { app, cookie } = await setup([
       entry('a', { title: '<script>alert(1)</script>' }, { body: '<script>alert(2)</script>\n\n[x](javascript:alert(3)) [ok](https://example.com)' }),
     ])
-    const body = (await page(app, '/releases/unreleased', cookie)).body
+    const body = (await page(app, '/', cookie)).body
     expect(body).not.toMatch(/<script>alert/)
     expect(body).not.toMatch(/href="javascript:/i)
     expect(body).toContain('href="https://example.com"')
@@ -185,7 +190,7 @@ describe('review', () => {
   it('starts entries open without any accept action', async () => {
     const { app, cookie } = await setup([entry('a')])
     expect(await statusOf(app, 'a')).toBe('open')
-    const body = (await page(app, '/releases/unreleased', cookie)).body
+    const body = (await page(app, '/', cookie)).body
     expect(body).not.toContain('value="accept"')
     expect(body).not.toContain('value="resolve"')
     expect((await post(app, '/entries/a/review', { action: 'accept', body: '' }, cookie)).statusCode).toBe(400)
@@ -204,14 +209,14 @@ describe('review', () => {
     const reviewer = await addUser(app, cookie, 'pat@example.com', 'reviewer', 'Pat')
     await post(app, '/entries/a/review', { action: 'request-changes', body: 'Export button is hard to find\nsecond line' }, reviewer.cookie)
     expect(await statusOf(app, 'a')).toBe('changes-requested')
-    expect((await page(app, '/releases/unreleased', cookie)).body).toMatch(/Pat<\/strong>\s*<span>requested changes/)
+    expect((await page(app, '/', cookie)).body).toMatch(/Pat<\/strong>\s*<span>requested changes/)
     await app.inject({
       method: 'POST',
       url: '/api/publish',
       payload: { entries: [{ ...entry('a'), body: 'New body' }] },
       headers: { authorization: `Bearer ${TOKEN}` },
     })
-    const body = (await page(app, '/releases/unreleased', cookie)).body
+    const body = (await page(app, '/', cookie)).body
     expect(body).toContain('Export button is hard to find\nsecond line')
     expect(body.indexOf('requested changes')).toBeLessThan(body.indexOf('updated the entry'))
     expect(await statusOf(app, 'a')).toBe('open')
@@ -222,23 +227,23 @@ describe('review', () => {
     await post(app, '/entries/a/review', { action: 'resolve', body: '' }, cookie)
     expect(await app.prisma.reviewEvent.count()).toBe(0)
     await post(app, '/entries/a/review', { action: 'request-changes', body: 'Typo in title' }, cookie)
-    expect((await page(app, '/releases/unreleased', cookie)).body).toContain('value="resolve"')
+    expect((await page(app, '/', cookie)).body).toContain('value="resolve"')
     await post(app, '/entries/a/review', { action: 'resolve', body: '' }, cookie)
     expect(await statusOf(app, 'a')).toBe('open')
-    expect((await page(app, '/releases/unreleased', cookie)).body).toContain('marked the change request as resolved')
+    expect((await page(app, '/', cookie)).body).toContain('marked the change request as resolved')
   })
 
   it('comments without changing status and escapes the text', async () => {
     const { app, cookie } = await setup([entry('a')])
     await post(app, '/entries/a/review', { action: 'comment', body: '<b>Looks good</b>, waiting for PO' }, cookie)
     expect(await statusOf(app, 'a')).toBe('open')
-    expect((await page(app, '/releases/unreleased', cookie)).body).toContain('&lt;b>Looks good&lt;/b>, waiting for PO')
+    expect((await page(app, '/', cookie)).body).toContain('&lt;b>Looks good&lt;/b>, waiting for PO')
     expect((await post(app, '/entries/a/review', { action: 'comment', body: 'x'.repeat(5001) }, cookie)).statusCode).toBe(400)
   })
 
   it('redirects plain form reviews to the entry anchor', async () => {
     const { app, cookie } = await setup([entry('a')])
-    expect((await post(app, '/entries/a/review', { action: 'comment', body: 'Nice' }, cookie)).headers.location).toBe('/releases/unreleased#entry-a')
+    expect((await post(app, '/entries/a/review', { action: 'comment', body: 'Nice' }, cookie)).headers.location).toBe('/#entry-a')
   })
 
   it('answers htmx reviews with the updated section only', async () => {
@@ -256,5 +261,34 @@ describe('review', () => {
     expect(response.statusCode).toBe(200)
     expect(response.body).toContain('Describe which changes you need')
     expect(await statusOf(app, 'a')).toBe('open')
+  })
+})
+
+describe('color theme', () => {
+  it('follows the system by default and remembers a chosen theme', async () => {
+    const { app, cookie } = await setup([entry('a')])
+    expect((await page(app, '/', cookie)).body).toMatch(/<html lang="en">/)
+    const chosen = await post(app, '/preferences/theme', { theme: 'dark' }, cookie, { referer: 'http://localhost:3000/?show=fix' })
+    expect(chosen.statusCode).toBe(303)
+    expect(chosen.headers.location).toBe('/?show=fix')
+    expect(String(chosen.headers['set-cookie'])).toMatch(/^theme=dark; Path=\/; Max-Age=31536000; SameSite=Lax/)
+    const dark = (await page(app, '/', `${cookie}; theme=dark`)).body
+    expect(dark).toContain('<html lang="en" data-theme="dark">')
+    expect(dark).toContain('value="system"')
+  })
+
+  it('ignores unknown themes and foreign referers', async () => {
+    const { app, cookie } = await setup([entry('a')])
+    const response = await post(app, '/preferences/theme', { theme: 'neon' }, cookie, { referer: 'https://evil.example.com/x' })
+    expect(response.headers.location).toBe('/')
+    expect(response.headers['set-cookie']).toBeUndefined()
+    expect((await page(app, '/', `${cookie}; theme=neon`)).body).toMatch(/<html lang="en">/)
+  })
+
+  it('serves fonts and the client script', async () => {
+    const { app } = await setup([])
+    for (const asset of ['/assets/app.js', '/assets/fonts/ibm-plex-sans-latin-400-normal.woff2', '/assets/fonts/ibm-plex-mono-latin-500-normal.woff2']) {
+      expect((await app.inject(asset)).statusCode).toBe(200)
+    }
   })
 })

@@ -1,14 +1,14 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify'
 import { z } from 'zod'
 import { sendFragment, sendHtml } from '../app.js'
-import { formBody, isHtmx } from '../http.js'
-import { t, translate, type MessageKey } from '../i18n.js'
+import { formBody, isHtmx, safeNext } from '../http.js'
+import { t, THEMES, translate, type MessageKey } from '../i18n.js'
 import { renderMarkdown } from '../markdown.js'
 import { mediaDir } from '../media.js'
-import { appUrl, releaseEntries, releasePath, releaseSummaries, resolveTry, type Status } from '../review.js'
+import { appUrl, compareEntries, releaseEntries, releaseSlug, releaseSummaries, resolveTry } from '../review.js'
 import { MessagePage } from '../views/auth.js'
-import { entryAnchor, EntrySection, RemovedEntryPage, type EntryView } from '../views/entry.js'
-import { EmptyPage, ReleasePage } from '../views/release.js'
+import { entryAnchor, EntryRow, RemovedEntryPage, type EntryView } from '../views/entry.js'
+import { EmptyPage, FILTERS, TimelinePage, type Filter, type TimelineSection } from '../views/timeline.js'
 
 const reviewSchema = z.object({
   action: z.enum(['comment', 'request-changes', 'resolve']),
@@ -17,9 +17,13 @@ const reviewSchema = z.object({
 const EVENT_KIND = { comment: 'comment', 'request-changes': 'changes-requested', resolve: 'resolved' } as const
 const NEXT_STATUS = { comment: undefined, 'request-changes': 'changes-requested', resolve: 'open' } as const
 const MEDIA_FILE = /^[0-9a-f]{64}\.(png|jpg|webp|gif|mp4|webm)$/
+const YEAR = 365 * 24 * 60 * 60
 
 const notFound = (reply: FastifyReply, what: 'release' | 'entry' | 'file') =>
   sendHtml(reply, MessagePage({ title: t('notFound.title'), message: t(`notFound.${what}`) }), 404)
+
+const matches = (filter: Filter | undefined, entry: { type: string; status: string }) =>
+  filter === undefined || (filter === 'changes-requested' ? entry.status === 'changes-requested' : entry.type === filter)
 
 export function viewerRoutes(app: FastifyInstance) {
   const { prisma, config } = app
@@ -31,43 +35,57 @@ export function viewerRoutes(app: FastifyInstance) {
     })
   const extras = (entry: EntryView, base: string | undefined) => ({ safeBodyHtml: renderMarkdown(entry.body), tryUrl: resolveTry(entry.try, base) })
 
-  async function renderRelease(
-    request: FastifyRequest,
-    reply: FastifyReply,
-    version: string | null,
-    form?: { id: string; comment: string; error: string },
-  ) {
-    const releases = await releaseSummaries(prisma)
-    const summary = releases.find((r) => r.version === version)
-    if (!summary) return notFound(reply, 'release')
-    const status = (request.query as { status?: string }).status
-    const filter: Status | undefined = status === 'changes-requested' ? status : undefined
-    const base = await appUrl(prisma)
-    const entries = (await releaseEntries(prisma, version)).map((entry, index) => ({
-      ...entry,
-      position: index + 1,
-      ...extras(entry, base),
-      ...(form?.id === entry.id && { comment: form.comment, error: form.error }),
-    }))
-    return sendHtml(reply, ReleasePage({ user: request.user!, releases, summary, entries, filter }), form ? 400 : 200)
+  async function renderTimeline(request: FastifyRequest, reply: FastifyReply, form?: { id: string; comment: string; error: string }) {
+    const show = (request.query as { show?: string }).show
+    const filter = (FILTERS as readonly string[]).includes(show ?? '') ? (show as Filter) : undefined
+    const [releases, entries, base] = await Promise.all([
+      releaseSummaries(prisma),
+      prisma.entry.findMany({
+        where: { removedAt: null },
+        include: { events: { orderBy: { createdAt: 'asc' }, include: { user: { select: { name: true } } } } },
+      }),
+      appUrl(prisma),
+    ])
+    if (releases.length === 0) return sendHtml(reply, EmptyPage({ user: request.user! }))
+
+    const counts = { all: entries.length, feature: 0, fix: 0, change: 0, 'changes-requested': 0 }
+    for (const entry of entries) {
+      if (entry.type in counts) counts[entry.type as 'feature' | 'fix' | 'change']++
+      if (entry.status === 'changes-requested') counts['changes-requested']++
+    }
+    const sections: TimelineSection[] = releases
+      .map((summary) => ({
+        summary,
+        // Positions come from the full release order, so filtering never renumbers.
+        entries: entries
+          .filter((entry) => entry.version === summary.version)
+          .sort(compareEntries)
+          .map((entry, index) => ({
+            ...entry,
+            ...extras(entry, base),
+            position: index + 1,
+            ...(form?.id === entry.id && { comment: form.comment, error: form.error, open: true }),
+          }))
+          .filter((entry) => matches(filter, entry)),
+      }))
+      .filter((section) => section.entries.length > 0)
+    return sendHtml(reply, TimelinePage({ user: request.user!, sections, counts, filter }), form ? 400 : 200)
   }
 
-  app.get('/', async (request, reply) => {
-    const releases = await releaseSummaries(prisma)
-    if (releases.length === 0) return sendHtml(reply, EmptyPage({ user: request.user! }))
-    return reply.redirect(releasePath(releases[0]!.version), 302)
-  })
+  app.get('/', (request, reply) => renderTimeline(request, reply))
 
   app.get('/releases/:release', async (request, reply) => {
     const { release } = request.params as { release: string }
     if (release !== 'unreleased' && !/^\d+\.\d+\.\d+$/.test(release)) return notFound(reply, 'release')
-    return renderRelease(request, reply, release === 'unreleased' ? null : release)
+    const version = release === 'unreleased' ? null : release
+    if (!(await prisma.entry.findFirst({ where: { version, removedAt: null }, select: { id: true } }))) return notFound(reply, 'release')
+    return reply.redirect(`/#release-${releaseSlug(version)}`, 302)
   })
 
   app.get('/entries/:id', async (request, reply) => {
     const entry = await loadEntry((request.params as { id: string }).id)
     if (!entry) return notFound(reply, 'entry')
-    if (!entry.removedAt) return reply.redirect(`${releasePath(entry.version)}#${entryAnchor(entry.id)}`, 302)
+    if (!entry.removedAt) return reply.redirect(`/#${entryAnchor(entry.id)}`, 302)
     return sendHtml(reply, RemovedEntryPage({ user: request.user!, entry, ...extras(entry, await appUrl(prisma)) }))
   })
 
@@ -96,23 +114,37 @@ export function viewerRoutes(app: FastifyInstance) {
     }
 
     if (isHtmx(request)) {
-      // htmx swaps only 2xx responses, so validation errors are answered with 200 and shown inside the section.
+      // htmx swaps only 2xx responses, so validation errors are answered with 200 and shown inside the row.
       const current = (await loadEntry(id))!
       const ordered = current.removedAt ? [] : await releaseEntries(prisma, current.version)
       const index = ordered.findIndex((e) => e.id === id)
-      const section = EntrySection({
+      const row = EntryRow({
         entry: current,
+        open: true,
         ...(index >= 0 && { position: index + 1 }),
         ...extras(current, await appUrl(prisma)),
         ...(error && { comment: form.body ?? '', error }),
       })
-      return sendFragment(reply, section)
+      return sendFragment(reply, row)
     }
     if (error) {
       if (entry.removedAt) return sendHtml(reply, RemovedEntryPage({ user: request.user!, entry, ...extras(entry, await appUrl(prisma)), error }), 400)
-      return renderRelease(request, reply, entry.version, { id, comment: form.body ?? '', error })
+      return renderTimeline(request, reply, { id, comment: form.body ?? '', error })
     }
-    return reply.redirect(`${releasePath(entry.version)}#${entryAnchor(id)}`, 303)
+    return reply.redirect(`/#${entryAnchor(id)}`, 303)
+  })
+
+  app.post('/preferences/theme', async (request, reply) => {
+    const theme = formBody(request).theme ?? ''
+    if ((THEMES as readonly string[]).includes(theme)) {
+      reply.header('set-cookie', `theme=${theme}; Path=/; Max-Age=${YEAR}; SameSite=Lax${config.baseUrl.startsWith('https:') ? '; Secure' : ''}`)
+    }
+    let back = '/'
+    try {
+      const referer = new URL(request.headers.referer ?? '')
+      if (referer.origin === new URL(config.baseUrl).origin) back = safeNext(referer.pathname + referer.search)
+    } catch {}
+    return reply.redirect(back, 303)
   })
 
   app.get('/media/:file', async (request, reply) => {

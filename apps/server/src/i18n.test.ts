@@ -24,14 +24,14 @@ describe('interface language', () => {
   it('renders German labels and dates', async () => {
     const { app, cookie } = await setup('de', [entry('a')])
     expect((await app.inject('/login')).body).toContain('Anmelden')
-    const body = (await app.inject({ url: '/releases/unreleased', headers: { cookie } })).body
+    const body = (await app.inject({ url: '/', headers: { cookie } })).body
     expect(body).toContain('<html lang="de">')
     expect(body).toContain('14.11.2026')
     expect(body).toContain('Noch nicht veröffentlicht')
     const review = await post(app, '/entries/a/review', { action: 'request-changes', body: '' }, cookie, { 'hx-request': 'true' })
     expect(review.body).toContain('Beschreibe, welche Änderungen du brauchst.')
     await app.prisma.entry.update({ where: { id: 'a' }, data: { status: 'changes-requested' } })
-    const flagged = (await app.inject({ url: '/releases/unreleased', headers: { cookie } })).body
+    const flagged = (await app.inject({ url: '/', headers: { cookie } })).body
     expect(flagged).toContain('Änderungen angefragt')
     expect(flagged).toContain('1 offener Änderungswunsch')
     expect(flagged).toContain('Als erledigt markieren')
@@ -39,7 +39,7 @@ describe('interface language', () => {
 
   it('uses English by default', async () => {
     const { app, cookie } = await setup('en', [entry('a')])
-    const body = (await app.inject({ url: '/releases/unreleased', headers: { cookie } })).body
+    const body = (await app.inject({ url: '/', headers: { cookie } })).body
     expect(body).toContain('Comment')
     expect(body).toContain('Nov 14, 2026')
   })
@@ -57,11 +57,9 @@ describe('release dates', () => {
       [entry('a', '1.0.0', 'feature', '2026-10-01'), entry('b', '1.1.0', 'feature', '2026-11-02'), entry('c', '1.1.0', 'fix', '2026-11-06')],
       [{ version: '1.0.0', date: '2026-10-15' }],
     )
-    const v100 = (await app.inject({ url: '/releases/1.0.0', headers: { cookie } })).body
-    expect(v100).toContain('Veröffentlicht am 15.10.2026')
-    const v110 = (await app.inject({ url: '/releases/1.1.0', headers: { cookie } })).body
-    expect(v110).toContain('Veröffentlicht am 06.11.2026')
-    expect(v110).toContain('15.10.2026')
+    const body = (await app.inject({ url: '/', headers: { cookie } })).body
+    expect(body).toMatch(/id="release-1\.0\.0"[\s\S]*?15\.10\.2026/)
+    expect(body).toMatch(/id="release-1\.1\.0"[\s\S]*?06\.11\.2026/)
   })
 
   it('replaces stored dates on publish and rejects duplicates', async () => {
@@ -79,28 +77,27 @@ describe('position numbers', () => {
   it('numbers entries in release order and keeps numbers when filtered', async () => {
     const { app, cookie } = await setup('en', [entry('fix-one', null, 'fix'), entry('feature-one')])
     await app.prisma.entry.update({ where: { id: 'fix-one' }, data: { status: 'changes-requested' } })
-    const body = (await app.inject({ url: '/releases/unreleased', headers: { cookie } })).body
-    expect(body).toMatch(/id="entry-feature-one"[\s\S]*?>1<\/span>/)
-    expect(body).toMatch(/id="entry-fix-one"[\s\S]*?>2<\/span>/)
-    expect(body).toMatch(/>2\.<\/span>[\s\S]*?Title fix-one/)
-    const filtered = (await app.inject({ url: '/releases/unreleased?status=changes-requested', headers: { cookie } })).body
+    const body = (await app.inject({ url: '/', headers: { cookie } })).body
+    expect(body).toMatch(/id="entry-feature-one"[\s\S]*?>01<\/span>/)
+    expect(body).toMatch(/id="entry-fix-one"[\s\S]*?>02<\/span>/)
+    const filtered = (await app.inject({ url: '/?show=changes-requested', headers: { cookie } })).body
     expect(filtered).not.toContain('id="entry-feature-one"')
-    expect(filtered).toMatch(/id="entry-fix-one"[\s\S]*?>2<\/span>/)
+    expect(filtered).toMatch(/id="entry-fix-one"[\s\S]*?>02<\/span>/)
   })
 
   it('keeps the number in htmx review fragments', async () => {
     const { app, cookie } = await setup('en', [entry('fix-one', null, 'fix'), entry('feature-one')])
     const response = await post(app, '/entries/fix-one/review', { action: 'comment', body: 'Hi' }, cookie, { 'hx-request': 'true' })
-    expect(response.body).toMatch(/>2<\/span>/)
+    expect(response.body).toMatch(/>02<\/span>/)
   })
 })
 
 describe('ticket links', () => {
-  it('labels request links as tickets right after the date, before media', async () => {
+  it('labels request links as tickets', async () => {
     const withTickets = { ...entry('a'), data: { ...entry('a').data, requests: ['https://app.asana.com/0/1/2', 'https://app.asana.com/0/1/3'] } }
     const { app, cookie } = await setup('de', [withTickets])
-    const body = (await app.inject({ url: '/releases/unreleased', headers: { cookie } })).body
-    expect(body).toMatch(/14\.11\.2026<\/span>\s*<a href="https:\/\/app\.asana\.com\/0\/1\/2"[^>]*>Ticket 1 ↗/)
+    const body = (await app.inject({ url: '/', headers: { cookie } })).body
+    expect(body).toMatch(/<a href="https:\/\/app\.asana\.com\/0\/1\/2"[^>]*>Ticket 1 ↗/)
     expect(body).toContain('Ticket 2 ↗')
     expect(body).not.toContain('Anfrage')
   })

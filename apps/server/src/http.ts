@@ -1,5 +1,6 @@
 import type { IncomingHttpHeaders } from 'node:http'
 import type { FastifyReply, FastifyRequest } from 'fastify'
+import { THEMES, type Theme } from './i18n.js'
 
 export function toHeaders(raw: IncomingHttpHeaders): Headers {
   const headers = new Headers()
@@ -26,4 +27,10 @@ export function formBody(request: FastifyRequest): Record<string, string> {
   const body = request.body
   if (typeof body !== 'object' || body === null) return {}
   return Object.fromEntries(Object.entries(body).map(([key, value]) => [key, String([value].flat()[0] ?? '')]))
+}
+
+/** Color theme chosen by the viewer (`theme` cookie), `system` when unset or unknown. */
+export function themeFromCookie(cookie: string | undefined): Theme {
+  const value = /(?:^|;\s*)theme=([a-z]+)/.exec(cookie ?? '')?.[1]
+  return (THEMES as readonly string[]).includes(value ?? '') ? (value as Theme) : 'system'
 }

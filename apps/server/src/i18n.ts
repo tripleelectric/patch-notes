@@ -2,11 +2,18 @@ import { AsyncLocalStorage } from 'node:async_hooks'
 import type { Language } from '@patch-notes/schema'
 
 const en = {
-  'nav.patches': 'Patches',
   'nav.users': 'Users',
+  'nav.filters': 'Filter entries',
+  'theme.system': 'System theme',
+  'theme.light': 'Light theme',
+  'theme.dark': 'Dark theme',
+  'theme.next': '{current}. Switch to {next}',
+  'timeline.title': 'Changelog',
+  'timeline.all': 'All',
+  'timeline.changes': 'Change requests',
+  'timeline.none': 'No entries match this filter.',
+  'timeline.feedback': '{count} feedback',
   'nav.logout': 'Log out',
-  'nav.releases': 'Releases',
-  'nav.breadcrumb': 'Breadcrumb',
 
   'login.title': 'Log in',
   'login.email': 'Email',
@@ -62,12 +69,9 @@ const en = {
   'role.reviewer': 'reviewer',
 
   'release.unreleased': 'Unreleased',
-  'release.patch': 'Patch {version}',
   'release.notYet': 'Not yet released',
-  'release.releasedOn': 'Released {date}',
   'release.entries': '{count} entries',
   'release.entry': '1 entry',
-  'release.noneWithStatus': 'No entries with this status.',
   'release.emptyTitle': 'Nothing published yet',
   'release.emptyHint': "Publish the project's patch notes from its repository:",
 
@@ -86,8 +90,6 @@ const en = {
   'entry.ticket': 'Ticket ↗',
   'entry.ticketN': 'Ticket {n} ↗',
   'entry.removed': 'This entry was removed from the repository and is no longer part of the patch notes.',
-  'entry.history': 'History ({count})',
-  'entry.noActivity': 'No activity yet.',
   'entry.publisher': 'publish',
   'event.updated': 'updated the entry',
   'event.accepted': 'accepted',
@@ -111,11 +113,18 @@ const en = {
 export type MessageKey = keyof typeof en
 
 const de: Record<MessageKey, string> = {
-  'nav.patches': 'Patches',
   'nav.users': 'Benutzer',
+  'nav.filters': 'Einträge filtern',
+  'theme.system': 'Systemdesign',
+  'theme.light': 'Helles Design',
+  'theme.dark': 'Dunkles Design',
+  'theme.next': '{current}. Wechseln zu {next}',
+  'timeline.title': 'Changelog',
+  'timeline.all': 'Alle',
+  'timeline.changes': 'Änderungswünsche',
+  'timeline.none': 'Keine Einträge für diesen Filter.',
+  'timeline.feedback': '{count} Feedback',
   'nav.logout': 'Abmelden',
-  'nav.releases': 'Releases',
-  'nav.breadcrumb': 'Brotkrumen',
 
   'login.title': 'Anmelden',
   'login.email': 'E-Mail',
@@ -171,12 +180,9 @@ const de: Record<MessageKey, string> = {
   'role.reviewer': 'Reviewer',
 
   'release.unreleased': 'Unveröffentlicht',
-  'release.patch': 'Patch {version}',
   'release.notYet': 'Noch nicht veröffentlicht',
-  'release.releasedOn': 'Veröffentlicht am {date}',
   'release.entries': '{count} Einträge',
   'release.entry': '1 Eintrag',
-  'release.noneWithStatus': 'Keine Einträge mit diesem Status.',
   'release.emptyTitle': 'Noch nichts veröffentlicht',
   'release.emptyHint': 'Veröffentliche die Patch Notes aus dem Repository des Projekts:',
 
@@ -195,8 +201,6 @@ const de: Record<MessageKey, string> = {
   'entry.ticket': 'Ticket ↗',
   'entry.ticketN': 'Ticket {n} ↗',
   'entry.removed': 'Dieser Eintrag wurde aus dem Repository entfernt und ist nicht mehr Teil der Patch Notes.',
-  'entry.history': 'Verlauf ({count})',
-  'entry.noActivity': 'Noch keine Aktivität.',
   'entry.publisher': 'Veröffentlichung',
   'event.updated': 'hat den Eintrag aktualisiert',
   'event.accepted': 'hat akzeptiert',
@@ -219,11 +223,19 @@ const de: Record<MessageKey, string> = {
 
 const DICTIONARIES: Record<Language, Record<MessageKey, string>> = { en, de }
 const LOCALES: Record<Language, string> = { en: 'en-US', de: 'de-DE' }
-const store = new AsyncLocalStorage<Language>()
+export const THEMES = ['system', 'light', 'dark'] as const
+export type Theme = (typeof THEMES)[number]
 
-/** Runs `fn` with `language` as the interface language for everything it renders. */
-export const withLanguage = <T>(language: Language, fn: () => T): T => store.run(language, fn)
-export const currentLanguage = (): Language => store.getStore() ?? 'en'
+interface RenderContext {
+  language: Language
+  theme: Theme
+}
+const store = new AsyncLocalStorage<RenderContext>()
+
+/** Runs `fn` with the interface language and color theme used by everything it renders. */
+export const withContext = <T>(context: RenderContext, fn: () => T): T => store.run(context, fn)
+export const currentLanguage = (): Language => store.getStore()?.language ?? 'en'
+export const currentTheme = (): Theme => store.getStore()?.theme ?? 'system'
 
 export function t(key: MessageKey, params: Record<string, string | number> = {}): string {
   return DICTIONARIES[currentLanguage()][key].replace(/\{(\w+)\}/g, (match, name: string) => (name in params ? String(params[name]) : match))
