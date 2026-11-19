@@ -4,6 +4,10 @@ import type { Language } from '@patch-notes/schema'
 const en = {
   'nav.users': 'Users',
   'nav.filters': 'Filter entries',
+  'lightbox.label': 'Image viewer',
+  'lightbox.prev': 'Previous image',
+  'lightbox.next': 'Next image',
+  'lightbox.close': 'Close',
   'theme.system': 'System theme',
   'theme.light': 'Light theme',
   'theme.dark': 'Dark theme',
@@ -115,6 +119,10 @@ export type MessageKey = keyof typeof en
 const de: Record<MessageKey, string> = {
   'nav.users': 'Benutzer',
   'nav.filters': 'Einträge filtern',
+  'lightbox.label': 'Bildansicht',
+  'lightbox.prev': 'Vorheriges Bild',
+  'lightbox.next': 'Nächstes Bild',
+  'lightbox.close': 'Schließen',
   'theme.system': 'Systemdesign',
   'theme.light': 'Helles Design',
   'theme.dark': 'Dunkles Design',

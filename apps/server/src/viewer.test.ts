@@ -292,3 +292,26 @@ describe('color theme', () => {
     }
   })
 })
+
+describe('image viewer', () => {
+  it('links entry images to the viewer grouped by entry, without new tabs', async () => {
+    const { app, cookie } = await setup([
+      entry('a', { media: [{ before: 'media/b.png', after: 'media/a.png', caption: 'Export' }] }, {
+        media: [
+          { path: 'media/b.png', sha256: sha(PNG), size: PNG.length, contentType: 'image/png' },
+          { path: 'media/a.png', sha256: sha(PNG), size: PNG.length, contentType: 'image/png' },
+        ],
+      }),
+    ])
+    const body = (await page(app, '/', cookie)).body
+    const links = body.match(/<a href="\/media\/[^"]+"[^>]*>/g) ?? []
+    expect(links).toHaveLength(2)
+    for (const link of links) {
+      expect(link).toContain('data-lightbox="a"')
+      expect(link).not.toContain('target=')
+    }
+    expect(links[1]).toContain('data-caption="After: Export"')
+    expect(body).toContain('<dialog id="lightbox"')
+    expect((await app.inject('/assets/app.js')).body).toContain('showModal')
+  })
+})

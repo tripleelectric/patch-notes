@@ -36,9 +36,10 @@ export interface EntryExtras {
 export const entryAnchor = (id: string) => `entry-${id}`
 const mediaUrl = (ref: MediaRef) => `/media/${mediaFileName(ref.sha256, ref.contentType)}`
 
-function Image({ media, label }: { media: MediaRef; label: string }) {
+/** Opens in the page's image viewer (app.js); `group` collects the images of one entry. */
+function Image({ media, label, group }: { media: MediaRef; label: string; group: string }) {
   return (
-    <a href={mediaUrl(media)} target="_blank" rel="noopener" class="block overflow-hidden" hx-boost="false">
+    <a href={mediaUrl(media)} data-lightbox={group} data-caption={label} class="block cursor-zoom-in overflow-hidden" hx-boost="false">
       <img src={mediaUrl(media)} alt={label} loading="lazy" width="1200" height="750" class="h-auto w-full" />
     </a>
   )
@@ -46,7 +47,7 @@ function Image({ media, label }: { media: MediaRef; label: string }) {
 
 const mediaLabel = 'px-3 pb-1.5 pt-2.5 font-mono text-[11px] uppercase tracking-wider'
 
-function MediaBlock({ item }: { item: MediaItem }) {
+function MediaBlock({ item, group }: { item: MediaItem; group: string }) {
   return (
     <figure class="overflow-hidden rounded-lg bg-panel shadow-[0_0_0_1px_var(--line)]">
       {item.before && item.after ? (
@@ -55,19 +56,19 @@ function MediaBlock({ item }: { item: MediaItem }) {
             <p class={`${mediaLabel} text-muted`} safe>
               {t('entry.before')}
             </p>
-            <Image media={item.before} label={t('entry.before')} />
+            <Image media={item.before} label={item.caption ? `${t('entry.before')}: ${item.caption}` : t('entry.before')} group={group} />
           </div>
           <div class="sm:border-l sm:border-line">
             <p class={`${mediaLabel} text-ok`} safe>
               {t('entry.after')}
             </p>
-            <Image media={item.after} label={t('entry.after')} />
+            <Image media={item.after} label={item.caption ? `${t('entry.after')}: ${item.caption}` : t('entry.after')} group={group} />
           </div>
         </div>
       ) : item.video ? (
         <video controls class="w-full bg-black" src={mediaUrl(item.video)} />
       ) : item.image ? (
-        <Image media={item.image} label={item.caption ?? t('entry.screenshot')} />
+        <Image media={item.image} label={item.caption ?? t('entry.screenshot')} group={group} />
       ) : (
         ''
       )}
@@ -232,7 +233,7 @@ export function EntryRow(props: { entry: EntryView; position?: number; open?: bo
         {media.length > 0 ? (
           <div class="grid min-w-0 content-start gap-4">
             {media.map((item) => (
-              <MediaBlock item={item} />
+              <MediaBlock item={item} group={entry.id} />
             ))}
           </div>
         ) : (
